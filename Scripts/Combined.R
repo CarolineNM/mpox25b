@@ -498,7 +498,7 @@ mu_v<- c(rep(0, burn_in_timesteps), v2)   ###mu is the per capita vaccination ra
 
 
 ##########Ww compartments#############
-tau=0.5   ##relative infectiousness of Asymptomatic vs symptomatic(0.8 covid paper)
+tau=0.776   ##relative infectiousness of Asymptomatic vs symptomatic(0.776 Brand et al)
 shed.I1 = 20.4  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
 shed.I2 = 17.9  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
 shed.I3 = 13.9 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
