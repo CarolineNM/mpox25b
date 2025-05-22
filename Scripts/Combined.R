@@ -394,13 +394,14 @@ for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
  ##Viral load likelihood
   ##Scaling, normalization and log transformation
 for (w in 1:T_WWobs) {
-  cp_total[w] <- delayed_conc[ww_sample_days[w]] * mult
+   cp_total[w] <- delayed_conc[ww_sample_days[w]] * mult
   cp_per_person[w] <- cp_total[w] / wwtp_population
   cp_per_person_mL[w] <- cp_per_person[w] * flow_mL_daily[w]
-  
-  log_mu[w] <- log(cp_per_person_mL[w] + 1e-6)  # add small offset to avoid log(0)
-  ww_obs[w] ~ dlnorm(log_mu[w], tau_ww)
-  ww_pred[w] ~ dlnorm(log_mu[w], tau_ww)
+
+  log10_conc[w] <- log(cp_per_person_mL[w] + 1) / log(10)
+
+  ww_obs[w] ~ dnorm(log10_conc[w], tau_ww)
+  ww_pred[w] ~ dnorm(log10_conc[w], tau_ww)
 
  }
 }"
@@ -498,26 +499,26 @@ mu_v<- c(rep(0, burn_in_timesteps), v2)   ###mu is the per capita vaccination ra
 
 
 ##########Ww compartments#############
-tau=0.5   ##relative infectiousness of Asymptomatic vs symptomatic(0.8 covid paper)
-shed.I1 = 20.4  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
-shed.I2 = 17.9  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
-shed.I3 = 13.9 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
+tau=0.776   ##relative infectiousness of Asymptomatic vs symptomatic(0.8 covid paper)
+shed.I1 = 12.3  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
+shed.I2 = 11.5  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
+shed.I3 = 10.2 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
 shed.I1a<-shed.I1 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 1
 shed.I2a<-shed.I2 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 2
 shed.I3a<-shed.I3# log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 3
 shed.I1b<-shed.I1 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 1
 shed.I2b<-shed.I2 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 2
 shed.I3b<-shed.I3# log10 cp/ml fecal shedding kinetics for 2nd dose symptomatic stage 3
-shed.A1 = 20.4*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 1
-shed.A2 = 17.9*tau # llog10 cp/ml fecal shedding kinetics for asymptomatic stage 2
-shed.A3 = 13.9*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 3
+shed.A1 = 12.3*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 1
+shed.A2 = 11.5*tau # llog10 cp/ml fecal shedding kinetics for asymptomatic stage 2
+shed.A3 = 10.2*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 3
 shed.A1a<-shed.A1 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 1
 shed.A2a<-shed.A2 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 2
 shed.A3a<-shed.A3 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 3
 shed.A1b<-shed.A1 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 1
 shed.A2b<-shed.A2 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 2
 shed.A3b<-shed.A3 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 3
-alpha=20.4*tau   ### log10 cp/ml fecal shedding kinetics for presymptomatic
+alpha=12.3*tau   ### log10 cp/ml fecal shedding kinetics for presymptomatic
 
 # Convert all shedding rates from log10(cp/mL) to cp/mL (linear scale)
 ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
@@ -634,26 +635,26 @@ system.time({
 Comblist_mod4<- as.mcmc.list(Combined_mod4)
 save(Comblist_mod4,file="U:/mpox25output/Comblist_mod4.RData")
 
-load("Output/Combined_listmod3.RData")
+load("U:/mpox25output/Comblist_mod4.RData")
 ###generate traceplots
-traceplot(Combined_listmod3[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(Combined_listmod3[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Combined_listmod3[, "mult"],main="Sacling factor of viral load")
-traceplot(Combined_listmod3[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Combined_listmod3[, "beta"],main="Transmission parameter")
-traceplot(Combined_listmod3[, "kappa"],main="Mixing probability")
-traceplot(Combined_listmod3[, "phi"],main="Negative binomial dispersion parmeter")
-traceplot(Combined_listmod3[, "report_frac"],main="reporting fraction")
-traceplot(Combined_listmod3[, "m"],main="Proportion of Asymptomatic fraction")
+traceplot(Comblist_mod4[, "transit_time_mean"],main="Mean transit time in sewer")
+#traceplot(Comblist_mod4[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(Comblist_mod4[, "mult"],main="Scaling factor of viral load")
+traceplot(Comblist_mod4[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Comblist_mod4[, "beta"],main="Transmission parameter")
+traceplot(Comblist_mod4[, "kappa"],main="Mixing probability")
+traceplot(Comblist_mod4[, "phi"],main="Negative binomial dispersion parmeter")
+traceplot(Comblist_mod4[, "report_frac"],main="reporting fraction")
+traceplot(Comblist_mod4[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
-chain_1_samples <- Combined_listmod3[[1]]
-mcmc_matrixall<-as.matrix(Combined_listmod3)
+chain_1_samples <- Comblist_mod4[[1]]
+mcmc_matrixall<-as.matrix(Comblist_mod4)
 ###randomly sample the list to generate summaries of predicted data
 mcmc_matrix<-as.matrix(chain_1_samples)
 total_samples <- nrow(mcmc_matrix)
 # Randomly sample 1000 indices from the total number of samples
-sample_indices <- sample(1:total_samples, size = 45000, replace = FALSE)
+sample_indices <- sample(1:total_samples, size = 29000, replace = FALSE)
 # Extract the sampled rows from the mcmc_matrix
 sampled_mcmc <- mcmc_matrix[sample_indices, ]
 
@@ -668,8 +669,8 @@ summary_median_CI <- function(samples) {
 
 # Summarize the posterior distributions for all parameters
 posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
-#posterior_summaryb <- summary_median_CI(mcmc_matrixall)
-posterior_summary[grep("beta|kappa|phi|mult|tau_ww|transit_time_mean|transit_time_cv|report_frac", rownames(posterior_summary)), ]
+posterior_summaryb <- summary_median_CI(mcmc_matrixall)
+posterior_summaryb[grep("beta|kappa|phi|mult|tau_ww|transit_time_mean|transit_time_cv|report_frac", rownames(posterior_summaryb)), ]
 
 # If you want to focus on specific parameters, e.g., total_new_cases and new_I3_cases:
 total_new_WW_summary <- as.data.frame(posterior_summary[grep("ww_pred", rownames(posterior_summary)), ])
