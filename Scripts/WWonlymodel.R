@@ -637,27 +637,27 @@ WW_listmod7<- as.mcmc.list(WW_mod7)
 save(WW_listmod7,file="U:/mpox25output/WW_listmod7.RData")
 #########plot the output
 
-load("U:/mpox25output/WW_listmod6.RData")
+load("U:/mpox25output/WW_listmod7.RData")
 ###generate traceplots
-#traceplot(WW_listmod5[, "transit_time_mean"],main="Mean transit time in sewer")
-#traceplot(WW_listmod4[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(WW_listmod6[, "mult"],main="Sacling factor of viral load")
-traceplot(WW_listmod6[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(WW_listmod6[, "beta"],main="Transmission parameter")
-traceplot(WW_listmod6[, "kappa"],main="Mixing probability")
-traceplot(WW_listmod6[, "phi"],main="Negative binomial dispersion parameter")
-traceplot(WW_listmod6[, "report_frac"],main="reporting fraction")
-traceplot(WW_listmod6[, "m"],main="Proportion of Asymptomatic fraction")
+traceplot(WW_listmod7[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(WW_listmod7[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(WW_listmod7[, "mult"],main="Sacling factor of viral load")
+traceplot(WW_listmod7[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(WW_listmod7[, "beta"],main="Transmission parameter")
+traceplot(WW_listmod7[, "kappa"],main="Mixing probability")
+traceplot(WW_listmod7[, "phi"],main="Negative binomial dispersion parameter")
+traceplot(WW_listmod7[, "report_frac"],main="reporting fraction")
+traceplot(WW_listmod7[, "m"],main="Proportion of Asymptomatic fraction")
 
 
 #####extract samples for plotting
-chain_1_samples <- WW_listmod6[[1]]
-mcmc_matrixall<-as.matrix(WW_listmod6)
+chain_1_samples <- WW_listmod7[[1]]
+mcmc_matrixall<-as.matrix(WW_listmod7)
 ###randomly sample the list to generate summaries of predicted data
 mcmc_matrix<-as.matrix(chain_1_samples)
 total_samples <- nrow(mcmc_matrix)
 # Randomly sample 1000 indices from the total number of samples
-sample_indices <- sample(1:total_samples, size = 4500, replace = FALSE)
+sample_indices <- sample(1:total_samples, size = 14000, replace = FALSE)
 # Extract the sampled rows from the mcmc_matrix
 sampled_mcmc <- mcmc_matrix[sample_indices, ]
 
@@ -673,7 +673,7 @@ summary_median_CI <- function(samples) {
 # Summarize the posterior distributions for all parameters
 posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
 posterior_summaryb <- summary_median_CI(mcmc_matrixall)
-posterior_summary[grep("beta|kappa|mult|tau_ww", rownames(posterior_summary)), ]
+posterior_summary[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rownames(posterior_summary)), ]
 
 # If you want to focus on specific parameters, e.g., total_new_cases and new_I3_cases:
 total_new_cases_summary <- as.data.frame(posterior_summary[grep("ww_pred", rownames(posterior_summary)), ])
@@ -694,7 +694,6 @@ is.numeric(flow_L_daily)
 ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 
 ##Create a data frame for plotting
-
 obs_days <- ww_sample_days  # length 48
 obs_viral_load <- ww_raw$log10_daily_avg_cp_ml# log10(cp/mL/person)
 total_delayed_summary$day <- 1:nrow(total_delayed_summary)
@@ -714,31 +713,6 @@ ggplot(plot_df, aes(x = day)) +
     y = "log10 copies/mL/person"
   ) +
   theme_minimal()
-
-
-
-
-
-
-plot_data <- data.frame(
-  time = 1:nrow(total_delayed_summary),                    # time index
-  #Time=case_dat$Date,
-  #observed = ww_obs,                    # observed cases
-  median_fit = total_delayed_summary$median,          # model median fit
-  lower_ci = total_delayed_summary$lower_95_CI,          # lower 95% CI
-  upper_ci = total_delayed_summary$upper_95_CI           # upper 95% CI
-)
-
-# Plot the observed cases and model fit with 95% CI
-plotfit=ggplot(plot_data, aes(x = time)) +
-  #geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
-  geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
-  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
-  labs(x = "Time", y = "delayed concentration", title = "Total delayed conc") +
-  theme_minimal() +
-  theme(legend.position = "top")
-
-plotfit
 
 ###############plot delayed concentration
 plot_dataww <- data.frame(
