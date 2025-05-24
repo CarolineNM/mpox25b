@@ -24,11 +24,12 @@ textstring <- "
 model {
   
   mu= 0.18           # Viral decay, fix to 0.18
-  
-  ###new changes for wwmod6
-  
-  mult ~ dnorm(0.0005, 1e8) T(0,) ##used this in wwmod5
+  #mult ~ dnorm(0.0005, 1e8) T(0,) ##used this in wwmod5
+  mult ~ dnorm(1.3e-9, 1e18) T(1e-10, 1e-8)
   tau_ww ~ dgamma(10, 5)  # mean = 2, SD = ~0.6,tigher
+  transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+  transit_time_cv   ~ dnorm(0.3, 1) T(0,)   
+  
   #tau_ww ~ dgamma(2, 2)     # Implies SD ~ 0.7 used this in wwmod5
   #tau_ww ~ dgamma(3, 2)   # mean = 1.5, SD = ~1.2, more flexible try this first
   #transit_time_mean ~ dnorm(3, 1.0) T(0,)  ###mean transit time in sewer(days),SD=1
@@ -36,8 +37,7 @@ model {
   
   
   # Estimate both mean and CV
-  transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
-  transit_time_cv   ~ dnorm(0.3, 25) T(0.1, 1)  # mean = 0.3, SD ≈ 0.2
+  
 
 
   ###other parameters
@@ -618,13 +618,13 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  WW_mod7<- run.jags(textstring, data = dataListWW,
+  WW_mod8<- run.jags(textstring, data = dataListWW,
                       # monitor = c("beta", "kappa","phi","ww_pred",
                       #             "transit_time_mean","mult","tau_ww",
                       #             "total_Cuminc", "active_infected",
                       #             "total_lambda","report_frac","Vea","Veb","m",
                       #             "delta_inv","theta_invall","omega_invall"),
-                     monitor = c("sigma","ww_pred","delayed_conc",
+                     monitor = c("ww_pred","delayed_conc",
                                  "mult","tau_ww","transit_time_mean","transit_time_cv"),
                       method="parallel",
                       sample = 15000, adapt =3000, burnin = 3000, thin = 2,
@@ -633,11 +633,10 @@ system.time({
                       summarise = FALSE)
 })
 
-WW_listmod7<- as.mcmc.list(WW_mod7)
-save(WW_listmod7,file="U:/mpox25output/WW_listmod7.RData")
+WW_listmod8<- as.mcmc.list(WW_mod8)
+save(WW_listmod8,file="D:/Mpox25output/WW_listmod8.RData")
 #########plot the output
-
-load("U:/mpox25output/WW_listmod7.RData")
+load("D:/Mpox25output/WW_listmod8.RData")
 ###generate traceplots
 traceplot(WW_listmod7[, "transit_time_mean"],main="Mean transit time in sewer")
 traceplot(WW_listmod7[, "transit_time_cv"],main="Standard deviation of transit mean time")
