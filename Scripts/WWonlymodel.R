@@ -25,10 +25,15 @@ model {
   
   mu= 0.18           # Viral decay, fix to 0.18
   #mult ~ dnorm(0.0005, 1e8) T(0,) ##used this in wwmod5
-  mult ~ dnorm(1.3e-9, 1e18) T(1e-10, 1e-8)
+  #mult ~ dnorm(1.3e-9, 1e18) T(1e-10, 1e-8)
+  #mult ~ dnorm(1e-7, 1e14) T(1e-10, 1e-5)
+  mult <- 1e-8
+
   tau_ww ~ dgamma(10, 5)  # mean = 2, SD = ~0.6,tigher
+  #transit_time_cv   ~ dnorm(0.3, 1) T(0,)###this crashes the model
   transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
-  transit_time_cv   ~ dnorm(0.3, 1) T(0,)   
+  transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
+
   
   #tau_ww ~ dgamma(2, 2)     # Implies SD ~ 0.7 used this in wwmod5
   #tau_ww ~ dgamma(3, 2)   # mean = 1.5, SD = ~1.2, more flexible try this first
@@ -379,9 +384,13 @@ total_lambda[1] <- sum(lambda_det[1:3, 1])
 
 sigma <- transit_time_mean * transit_time_cv  
 
- for (i in 1:tmax) {
-  g[i] <- (1 / (sigma * sqrt(2 * 3.14159))) * exp(-pow(i - transit_time_mean, 2) / (2 * pow(sigma, 2)))
- }
+for (i in 1:tmax) {
+  unnorm_g[i] <- (1 / (sigma * sqrt(2 * 3.14159))) * exp(-pow(i - transit_time_mean, 2) / (2 * pow(sigma, 2)))
+}
+sum_g <- sum(unnorm_g[1:tmax])
+for (i in 1:tmax) {
+  g[i] <- unnorm_g[i] / sum_g
+}
 
 for (t in 1:T) {
   for (i in 1:tmax) {
@@ -602,16 +611,18 @@ dataListWW <- list(
   ww_obs = ww_obs,  # or ww_raw if unstandardized
   ####precomputed g to include in the advection dispersion decay model
   #transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
-  tmax=30)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
+  tmax=15)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
 ###precomputed start and end dates of defining the epi weeks
 
 inits_list <- list(
   list(tau_ww=2,
-        mult = 0.0005,transit_time_mean=2.5,transit_time_cv=0.3,
+        #mult = 0.0005,
+       transit_time_mean=2.5,transit_time_cv=0.3,
        .RNG.name = "base::Wichmann-Hill", .RNG.seed = 42),
   
   list(tau_ww=2.2,
-       mult = 0.0004,transit_time_mean=2.4,transit_time_cv=0.2,
+       #mult = 0.0004,
+       transit_time_mean=2.4,transit_time_cv=0.2,
        .RNG.name = "base::Wichmann-Hill", .RNG.seed = 99)
 )
 
@@ -625,9 +636,9 @@ system.time({
                       #             "total_lambda","report_frac","Vea","Veb","m",
                       #             "delta_inv","theta_invall","omega_invall"),
                      monitor = c("ww_pred","delayed_conc",
-                                 "mult","tau_ww","transit_time_mean","transit_time_cv"),
+                                 "tau_ww","transit_time_mean","transit_time_cv"),
                       method="parallel",
-                      sample = 15000, adapt =3000, burnin = 3000, thin = 2,
+                      sample = 2000, adapt =500, burnin = 500, thin = 1,
                       #sample = 5000, adapt =1000, burnin = 1000, thin = 1,
                       n.chains = 2, inits = inits_list,
                       summarise = FALSE)
