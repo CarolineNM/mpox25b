@@ -677,12 +677,12 @@ system.time({
 WW_listmod12<- as.mcmc.list(WW_mod12)
 save(WW_listmod12,file="U:/mpox25output/WW_listmod12.RData")
 #########plot the output
-load("U:/mpox25output/WW_listmod11.RData")
+load("U:/mpox25output/WW_listmod12.RData")
 ###generate traceplots
-traceplot(WW_listmod11[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(WW_listmod11[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(WW_listmod11[, "mult"],main="Scaling factor of viral load")
-traceplot(WW_listmod11[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(WW_listmod12[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(WW_listmod12[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(WW_listmod12[, "mult"],main="Scaling factor of viral load")
+traceplot(WW_listmod12[, "tau_ww"],main="Precision of the dnorm likelihood")
 #traceplot(WW_listmod7[, "beta"],main="Transmission parameter")
 #traceplot(WW_listmod7[, "kappa"],main="Mixing probability")
 #traceplot(WW_listmod7[, "phi"],main="Negative binomial dispersion parameter")
@@ -690,8 +690,8 @@ traceplot(WW_listmod11[, "tau_ww"],main="Precision of the dnorm likelihood")
 #traceplot(WW_listmod7[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
-chain_1_samples <- WW_listmod11[[1]]
-mcmc_matrixall<-as.matrix(WW_listmod11)
+chain_1_samples <- WW_listmod12[[1]]
+mcmc_matrixall<-as.matrix(WW_listmod12)
 ###randomly sample the list to generate summaries of predicted data
 mcmc_matrix<-as.matrix(chain_1_samples)
 total_samples <- nrow(mcmc_matrix)
