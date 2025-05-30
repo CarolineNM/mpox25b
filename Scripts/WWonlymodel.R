@@ -27,14 +27,26 @@ model {
   #mult ~ dnorm(0.0005, 1e8) T(0,) ##used this in wwmod5
   #mult ~ dnorm(1.3e-9, 1e18) T(1e-10, 1e-8)
   #mult ~ dnorm(1e-7, 1e14) T(1e-10, 1e-5)
-  mult <- 1e-8
-
-  tau_ww ~ dgamma(10, 5)  # mean = 2, SD = ~0.6,tigher
   #transit_time_cv   ~ dnorm(0.3, 1) T(0,)###this crashes the model
-  transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
-  transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
-
+  #mult <- 1e-8 ###wwmod8
+  #tau_ww ~ dgamma(10, 5)  # mean = 2, SD = ~0.6,wwmod8
   
+  ###wwmod10 which we will use for final run
+  #log_mult ~ dnorm(log(1e-8), 25)
+  #mult <- exp(log_mult) 
+  #tau_ww ~ dgamma(15, 6.5)
+  #transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+  #transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
+
+  ##############try wwmod11
+  log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
+  mult <- exp(log_mult)
+  tau_ww ~dgamma(30, 2.7)
+  transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+  #transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
+  transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
+
+
   #tau_ww ~ dgamma(2, 2)     # Implies SD ~ 0.7 used this in wwmod5
   #tau_ww ~ dgamma(3, 2)   # mean = 1.5, SD = ~1.2, more flexible try this first
   #transit_time_mean ~ dnorm(3, 1.0) T(0,)  ###mean transit time in sewer(days),SD=1
@@ -42,9 +54,6 @@ model {
   
   
   # Estimate both mean and CV
-  
-
-
   ###other parameters
   
   #beta ~ dnorm(1.7, 6.25) T(0,) ##tighter prior truncated around 1.7
@@ -615,59 +624,79 @@ dataListWW <- list(
 ###precomputed start and end dates of defining the epi weeks
 
 inits_list <- list(
-  list(tau_ww=2,
-        #mult = 0.0005,
-       transit_time_mean=2.5,transit_time_cv=0.3,
-       .RNG.name = "base::Wichmann-Hill", .RNG.seed = 42),
-  
-  list(tau_ww=2.2,
-       #mult = 0.0004,
-       transit_time_mean=2.4,transit_time_cv=0.2,
-       .RNG.name = "base::Wichmann-Hill", .RNG.seed = 99)
+  list(
+    log_mult = log(1e-8),  # Based on fixed value that worked
+    tau_ww = 0.4,          # Around posterior median (0.43)
+    transit_time_mean = 2.5,  # Close to prior mean
+    transit_time_cv = 0.3,    # Close to prior mean
+    .RNG.name = "base::Wichmann-Hill",
+    .RNG.seed = 42
+  ),
+  list(
+    log_mult = log(8e-9),  # Slight variation for chain independence
+    tau_ww = 0.5,
+    transit_time_mean = 2.8,
+    transit_time_cv = 0.35,
+    .RNG.name = "base::Wichmann-Hill",
+    .RNG.seed = 99
+  )
 )
 
+# system.time({
+#   Combined_mod5<- run.jags(textstring, data = dataListcomb,
+#                            # monitor = c("beta", "kappa","phi","ww_pred",
+#                            #             "transit_time_mean","mult","tau_ww",
+#                            #             "total_Cuminc", "active_infected",
+#                            #             "total_lambda","report_frac","Vea","Veb","m",
+#                            #             "delta_inv","theta_invall","omega_invall"),
+#                            monitor = c("ww_pred","delayed_conc",
+#                                        "tau_ww","transit_time_mean","transit_time_cv"),
+#                            method="parallel",
+#                            #sample = 2000, adapt =500, burnin = 500, thin = 1,
+#                            sample = 10000, adapt =2000, burnin = 2000, thin = 1,
+#                            n.chains = 2, inits = inits_list,
+#                            summarise = FALSE)
+# })
 
 #Run the model with different initial values for each chain
 system.time({
-  WW_mod8<- run.jags(textstring, data = dataListWW,
-                      # monitor = c("beta", "kappa","phi","ww_pred",
-                      #             "transit_time_mean","mult","tau_ww",
-                      #             "total_Cuminc", "active_infected",
-                      #             "total_lambda","report_frac","Vea","Veb","m",
-                      #             "delta_inv","theta_invall","omega_invall"),
-                     monitor = c("ww_pred","delayed_conc",
-                                 "tau_ww","transit_time_mean","transit_time_cv"),
+  WW_mod12<- run.jags(textstring, data = dataListWW,
+                       monitor = c("ww_pred","delayed_conc","mult",
+                                   "tau_ww","transit_time_mean","transit_time_cv",
+                                   "beta","kappa","phi","ww_pred",
+                                  "total_Cuminc", "active_infected",
+                                  "total_lambda","report_frac","Vea","Veb","m",
+                                  "delta_inv","theta_invall","omega_invall"),
                       method="parallel",
-                      sample = 2000, adapt =500, burnin = 500, thin = 1,
-                      #sample = 5000, adapt =1000, burnin = 1000, thin = 1,
+                      #sample = 2000, adapt =500, burnin = 500, thin = 1,
+                      sample = 15000, adapt =2000, burnin = 2000, thin = 2,
                       n.chains = 2, inits = inits_list,
                       summarise = FALSE)
 })
 
-WW_listmod8<- as.mcmc.list(WW_mod8)
-save(WW_listmod8,file="D:/Mpox25output/WW_listmod8.RData")
+WW_listmod12<- as.mcmc.list(WW_mod12)
+save(WW_listmod12,file="U:/mpox25output/WW_listmod12.RData")
 #########plot the output
-load("D:/Mpox25output/WW_listmod8.RData")
+load("U:/mpox25output/WW_listmod11.RData")
 ###generate traceplots
-traceplot(WW_listmod7[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(WW_listmod7[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(WW_listmod7[, "mult"],main="Sacling factor of viral load")
-traceplot(WW_listmod7[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(WW_listmod7[, "beta"],main="Transmission parameter")
-traceplot(WW_listmod7[, "kappa"],main="Mixing probability")
-traceplot(WW_listmod7[, "phi"],main="Negative binomial dispersion parameter")
-traceplot(WW_listmod7[, "report_frac"],main="reporting fraction")
-traceplot(WW_listmod7[, "m"],main="Proportion of Asymptomatic fraction")
-
+traceplot(WW_listmod11[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(WW_listmod11[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(WW_listmod11[, "mult"],main="Scaling factor of viral load")
+traceplot(WW_listmod11[, "tau_ww"],main="Precision of the dnorm likelihood")
+#traceplot(WW_listmod7[, "beta"],main="Transmission parameter")
+#traceplot(WW_listmod7[, "kappa"],main="Mixing probability")
+#traceplot(WW_listmod7[, "phi"],main="Negative binomial dispersion parameter")
+#traceplot(WW_listmod7[, "report_frac"],main="reporting fraction")
+#traceplot(WW_listmod7[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
-chain_1_samples <- WW_listmod7[[1]]
-mcmc_matrixall<-as.matrix(WW_listmod7)
+chain_1_samples <- WW_listmod11[[1]]
+mcmc_matrixall<-as.matrix(WW_listmod11)
 ###randomly sample the list to generate summaries of predicted data
 mcmc_matrix<-as.matrix(chain_1_samples)
 total_samples <- nrow(mcmc_matrix)
 # Randomly sample 1000 indices from the total number of samples
-sample_indices <- sample(1:total_samples, size = 14000, replace = FALSE)
+sample_indices <- sample(1:total_samples, size = 1000, replace = FALSE)
 # Extract the sampled rows from the mcmc_matrix
 sampled_mcmc <- mcmc_matrix[sample_indices, ]
 
@@ -683,13 +712,13 @@ summary_median_CI <- function(samples) {
 # Summarize the posterior distributions for all parameters
 posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
 posterior_summaryb <- summary_median_CI(mcmc_matrixall)
-posterior_summary[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rownames(posterior_summary)), ]
+posterior_summaryb[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rownames(posterior_summaryb)), ]
 
 # If you want to focus on specific parameters, e.g., total_new_cases and new_I3_cases:
-total_new_cases_summary <- as.data.frame(posterior_summary[grep("ww_pred", rownames(posterior_summary)), ])
-total_delayed_summary <- as.data.frame(posterior_summary[grep("delayed_conc", rownames(posterior_summary)), ])
-prev_summary <- as.data.frame(posterior_summary[grep("active_infected", rownames(posterior_summary)), ])
-CumInc_summary <- as.data.frame(posterior_summary[grep("total_Cuminc", rownames(posterior_summary)), ])
+total_new_cases_summary <- as.data.frame(posterior_summaryb[grep("ww_pred", rownames(posterior_summaryb)), ])
+total_delayed_summary <- as.data.frame(posterior_summaryb[grep("delayed_conc", rownames(posterior_summaryb)), ])
+#prev_summary <- as.data.frame(posterior_summary[grep("active_infected", rownames(posterior_summary)), ])
+#CumInc_summary <- as.data.frame(posterior_summary[grep("total_Cuminc", rownames(posterior_summary)), ])
 
 #nrow(total_new_cases_summaryb)
 #total_new_cases_summaryb<-total_new_cases_summary %>% mutate(Day=1:169)
@@ -710,15 +739,17 @@ total_delayed_summary$day <- 1:nrow(total_delayed_summary)
 
 plot_df <- total_delayed_summary %>%
   filter(day %in% obs_days) %>%
-  mutate(observed = obs_viral_load)
+  mutate(observedraw = obs_viral_load,
+         observedstd = ww_obs)
 
 #names(plot_df)
 ggplot(plot_df, aes(x = day)) +
   geom_ribbon(aes(ymin = log10(lower_95_CI), ymax = log10(upper_95_CI)), fill = "lightblue", alpha = 0.4) +
   geom_line(aes(y = log10(median)), color = "blue", size = 1) +
-  geom_point(aes(y = observed), color = "black", shape = 16, size = 2) +
+  geom_point(aes(y = observedraw), color = "black", shape = 16, size = 2) +
+  geom_point(aes(y = observedstd), color = "red", shape = 16, size = 2) +
   labs(
-    title = "Predicted Delayed Viral Load vs. Observed (WW)",
+    title = "Predicted Delayed Viral Load vs. Observed raw(black) vs Observed std(red)",
     x = "Day",
     y = "log10 copies/mL/person"
   ) +
@@ -744,13 +775,6 @@ plotfit=ggplot(plot_dataww, aes(x = time)) +
   theme(legend.position = "top")
 
 plotfit
-
-
-
-
-
-
-
 
 
 

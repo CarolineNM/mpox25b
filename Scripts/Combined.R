@@ -14,20 +14,39 @@ textstring <- "
 model {
   
   mu= 0.18           # Viral decay, fix to 0.18
-  tau_ww ~ dgamma(2, 2)     # Implies SD ~ 0.7 in log10 space
-  transit_time_mean ~ dnorm(3, 1.0) T(0,)  ###mean transit time in sewer(days),SD=1
-  #transit_time_cv ~ dnorm(0.3, 100) T(0,)  # SD = 0.1
-  mult ~ dunif(1e-4, 1e-2)  # Wider scaling prior(option 3)
+  #mult ~ dnorm(0.0005, 1e8) T(0,) ##used this in wwmod5
+  #mult ~ dnorm(1.3e-9, 1e18) T(1e-10, 1e-8)
+  #mult ~ dnorm(1e-7, 1e14) T(1e-10, 1e-5)
+  #transit_time_cv   ~ dnorm(0.3, 1) T(0,)###this crashes the model
   
-  #mult ~ dnorm(0.0005, 1e8) T(1e-5, 0.001) ##new scaling factor
-  #transit_time_mean ~ dnorm(3, 1.0) T(0,)  ###mean transit time in sewer(days),SD=1
-  #transit_time_cv ~ dnorm(0.3, 100) T(0,)  # SD = 0.1
+  ##combmod5
+  #mult <- 1e-8
+  #tau_ww ~ dgamma(10, 5)  # mean = 2, SD = ~0.6,tigher
+  #transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+  #transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
+
+  ##combmod6 works okay but want to try a final version
+   #mult ~ dnorm(5e-8, 1e15) T(1e-9, 1e-6)
+   #transit_time_cv ~ dnorm(0.3, 25) T(0.2, 0.8)
+   #transit_time_mean ~ dnorm(2.5, 25) T(1.5, 4)
+   #tau_ww ~ dgamma(15, 6.5)
   
-  
+  ##combmod7 
+   #log_mult ~ dnorm(log(1.5e-9), 200)
+   log_mult ~ dnorm(log(1.5e-9), 400) ##newcombmod8
+   mult <- exp(log_mult)
+   transit_time_mean ~ dnorm(2.5, 25) T(1.5, 4)
+   transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.8)
+   #tau_ww ~dgamma(30, 2.7)
+   tau_ww ~ dgamma(50, 60)  # mean ≈ 0.83, SD ≈ 0.12#newcombmod8
+
+   
+  # Estimate both mean and CV
   ###other parameters
   
   #beta ~ dnorm(1.7, 6.25) T(0,) ##tighter prior truncated around 1.7
   beta~dnorm(0.8, 100) T(0,1)
+
 
   E0 ~ dpois(5)    #  A Poisson prior with mean 5
   P0 ~ dpois(1)  # Total pre-symptomatic individuals
@@ -36,8 +55,6 @@ model {
   
   kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
   phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
- 
-  
  
   
   #delta_inv<-6.26 ## duration in E comp 6.26(5.55-6.97)
@@ -597,64 +614,67 @@ dataListcomb <- list(
   ww_obs = ww_obs,  # or ww_raw if unstandardized
   cases_obs=cases_obsb,
   ####precomputed g to include in the advection dispersion decay model
-  transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
-  tmax=18)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
+  #transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
+  tmax=15)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
 ###precomputed start and end dates of defining the epi weeks
-
 inits_list <- list(
   list(
-    beta = 0.8, kappa = 0.95, report_frac = 0.50, phi = 4,
-    Vea = 0.3, Veb = 0.5, 
-    transit_time_mean = 2.4, mult = 0.0005,  # instead of mult
-    .RNG.name = "base::Wichmann-Hill", .RNG.seed = 69
+    log_mult = log(1.5e-9),
+    transit_time_mean = 2.6,
+    transit_time_cv = 0.35,
+    tau_ww = 0.55,
+    .RNG.name = "base::Wichmann-Hill",
+    .RNG.seed = 42
   ),
   list(
-    beta = 0.9, kappa = 0.92, report_frac = 0.55, phi = 5,
-    Vea = 0.3, Veb = 0.5,
-    transit_time_mean = 2.6, mult = 0.0004, # instead of mult
-    .RNG.name = "base::Wichmann-Hill", .RNG.seed = 99
+    log_mult = log(1.2e-9),
+    transit_time_mean = 2.4,
+    transit_time_cv = 0.28,
+    tau_ww = 0.50,
+    .RNG.name = "base::Wichmann-Hill",
+    .RNG.seed = 99
   )
 )
 
-
 #Run the model with different initial values for each chain
 system.time({
-  Combined_mod4<- run.jags(textstring, data = dataListcomb,
-                      monitor = c("beta", "kappa","phi","ww_pred","cases_pred",
-                                  "transit_time_mean","mult","tau_ww",
-                                  "total_Cuminc", "active_infected",
-                                  "total_lambda","report_frac","Vea","Veb","m",
-                                  "delta_inv","theta_invall","omega_invall"),
-                      method="parallel",
-                      sample = 30000, adapt =10000, burnin = 10000, thin = 2,
-                      #sample = 500, adapt =10, burnin = 10, thin = 1,
-                      n.chains = 2, inits = inits_list,
-                      summarise = FALSE)
+  Combined_mod8<- run.jags(textstring, data = dataListcomb,
+                     monitor = c("beta","kappa","phi","ww_pred",
+                                 "transit_time_mean","mult","tau_ww",
+                                 "transit_time_cv","delayed_conc",
+                                 "total_Cuminc", "active_infected",
+                                 "total_lambda","report_frac","Vea","Veb","m",
+                                 "delta_inv","theta_invall","omega_invall"),
+                     method="parallel",
+                     #sample = 2000, adapt =500, burnin = 500, thin = 1,
+                     sample = 15000, adapt =2000, burnin = 2000, thin = 2,
+                     n.chains = 2, inits = inits_list,
+                     summarise = FALSE)
 })
 
-Comblist_mod4<- as.mcmc.list(Combined_mod4)
-save(Comblist_mod4,file="U:/mpox25output/Comblist_mod4.RData")
-
-load("U:/mpox25output/Comblist_mod4.RData")
+Comblist_mod8<- as.mcmc.list(Combined_mod8)
+save(Comblist_mod8,file="U:/mpox25output/Comblist_mod8.RData")
+############generate output
+load(file="U:/mpox25output/Comblist_mod7.RData")
 ###generate traceplots
-traceplot(Comblist_mod4[, "transit_time_mean"],main="Mean transit time in sewer")
-#traceplot(Comblist_mod4[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Comblist_mod4[, "mult"],main="Scaling factor of viral load")
-traceplot(Comblist_mod4[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Comblist_mod4[, "beta"],main="Transmission parameter")
-traceplot(Comblist_mod4[, "kappa"],main="Mixing probability")
-traceplot(Comblist_mod4[, "phi"],main="Negative binomial dispersion parmeter")
-traceplot(Comblist_mod4[, "report_frac"],main="reporting fraction")
-traceplot(Comblist_mod4[, "m"],main="Proportion of Asymptomatic fraction")
+traceplot(Comblist_mod7[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Comblist_mod7[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(Comblist_mod7[, "mult"],main="Scaling factor of viral load")
+traceplot(Comblist_mod7[, "tau_ww"],main="Precision of the dnorm likelihood")
+#traceplot(Comblist_mod4[, "beta"],main="Transmission parameter")
+#traceplot(Comblist_mod4[, "kappa"],main="Mixing probability")
+#traceplot(Comblist_mod4[, "phi"],main="Negative binomial dispersion parmeter")
+#traceplot(Comblist_mod4[, "report_frac"],main="reporting fraction")
+#traceplot(Comblist_mod4[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
-chain_1_samples <- Comblist_mod4[[1]]
-mcmc_matrixall<-as.matrix(Comblist_mod4)
+chain_1_samples <- Comblist_mod7[[1]]
+mcmc_matrixall<-as.matrix(Comblist_mod7)
 ###randomly sample the list to generate summaries of predicted data
 mcmc_matrix<-as.matrix(chain_1_samples)
 total_samples <- nrow(mcmc_matrix)
 # Randomly sample 1000 indices from the total number of samples
-sample_indices <- sample(1:total_samples, size = 29000, replace = FALSE)
+sample_indices <- sample(1:total_samples, size = 9000, replace = FALSE)
 # Extract the sampled rows from the mcmc_matrix
 sampled_mcmc <- mcmc_matrix[sample_indices, ]
 
@@ -668,15 +688,17 @@ summary_median_CI <- function(samples) {
 }
 
 # Summarize the posterior distributions for all parameters
-posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
+#posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
 posterior_summaryb <- summary_median_CI(mcmc_matrixall)
-posterior_summaryb[grep("beta|kappa|phi|mult|tau_ww|transit_time_mean|transit_time_cv|report_frac", rownames(posterior_summaryb)), ]
+posterior_summaryb[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rownames(posterior_summaryb)), ]
 
 # If you want to focus on specific parameters, e.g., total_new_cases and new_I3_cases:
-total_new_WW_summary <- as.data.frame(posterior_summary[grep("ww_pred", rownames(posterior_summary)), ])
-total_new_case_summary <- as.data.frame(posterior_summary[grep("cases_pred", rownames(posterior_summary)), ])
-prev_summary <- as.data.frame(posterior_summary[grep("active_infected", rownames(posterior_summary)), ])
-CumInc_summary <- as.data.frame(posterior_summary[grep("total_Cuminc", rownames(posterior_summary)), ])
+total_new_WW_summary <- as.data.frame(posterior_summaryb[grep("ww_pred", rownames(posterior_summaryb)), ])
+total_delayed_summary <- as.data.frame(posterior_summaryb[grep("delayed_conc", rownames(posterior_summaryb)), ])
+
+#total_new_case_summary <- as.data.frame(posterior_summary[grep("cases_pred", rownames(posterior_summary)), ])
+#prev_summary <- as.data.frame(posterior_summaryb[grep("active_infected", rownames(posterior_summaryb)), ])
+#CumInc_summary <- as.data.frame(posterior_summaryb[grep("total_Cuminc", rownames(posterior_summaryb)), ])
 
 ###read in the observed WW data
 ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
@@ -688,31 +710,30 @@ ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 #ww_obs = as.numeric(unlist(ww_stdlinear$cp_per_person_per_day))
 ###read in the observed case data
 #total_new_cases_summaryb<-total_new_cases_summary %>% mutate(Day=1:169)
-case_dat=read_excel("Data/case_data_V2.xlsx",sheet="cases")
-cases_obsb = case_dat %>% select(total_cases)
-
-##########Generate case data fir
-##Create a data frame for plotting
-plot_casedat <- data.frame(
-  time = 1:nrow(cases_obsb),                    # time index
-  Date=case_dat$Date,
-  observed = cases_obsb$total_cases,                    # observed cases
-  median_fit = total_new_case_summary$median,          # model median fit
-  lower_ci = total_new_case_summary$lower_95_CI,          # lower 95% CI
-  upper_ci = total_new_case_summary$upper_95_CI           # upper 95% CI
-)
-
-# Plot the observed cases and model fit with 95% CI
-plot_casefit=ggplot(plot_casedat, aes(x = time)) +
-  geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
-  geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
-  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
-  labs(x = "Time", y = "Reported Mpox cases", title = "fit vs. Observed Cases") +
-  theme_minimal() +
-  theme(legend.position = "top")
-
-plot_casefit
-
+# case_dat=read_excel("Data/case_data_V2.xlsx",sheet="cases")
+# cases_obsb = case_dat %>% select(total_cases)
+# 
+# ##########Generate case data fir
+# ##Create a data frame for plotting
+# plot_casedat <- data.frame(
+#   time = 1:nrow(cases_obsb),                    # time index
+#   Date=case_dat$Date,
+#   observed = cases_obsb$total_cases,                    # observed cases
+#   median_fit = total_new_case_summary$median,          # model median fit
+#   lower_ci = total_new_case_summary$lower_95_CI,          # lower 95% CI
+#   upper_ci = total_new_case_summary$upper_95_CI           # upper 95% CI
+# )
+# 
+# # Plot the observed cases and model fit with 95% CI
+# plot_casefit=ggplot(plot_casedat, aes(x = time)) +
+#   geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
+#   geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
+#   geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
+#   labs(x = "Time", y = "Reported Mpox cases", title = "fit vs. Observed Cases") +
+#   theme_minimal() +
+#   theme(legend.position = "top")
+# 
+# plot_casefit
 
 ##Create a data frame for plotting
 plot_wwdata <- data.frame(
@@ -734,6 +755,53 @@ plot_wwfit=ggplot(plot_wwdata, aes(x = time)) +
   theme(legend.position = "top")
 
 plot_wwfit
+
+##Create a data frame for plotting
+obs_days <- ww_sample_days  # length 48
+obs_viral_load <- ww_raw$log10_daily_avg_cp_ml# log10(cp/mL/person)
+total_delayed_summary$day <- 1:nrow(total_delayed_summary)
+
+plot_df <- total_delayed_summary %>%
+  filter(day %in% obs_days) %>%
+  mutate(observedraw = obs_viral_load,
+         observedstd = ww_obs)
+
+#names(plot_df)
+ggplot(plot_df, aes(x = day)) +
+  geom_ribbon(aes(ymin = log10(lower_95_CI), ymax = log10(upper_95_CI)), fill = "lightblue", alpha = 0.4) +
+  geom_line(aes(y = log10(median)), color = "blue", size = 1) +
+  geom_point(aes(y = observedraw), color = "black", shape = 16, size = 2) +
+  geom_point(aes(y = observedstd), color = "red", shape = 16, size = 2) +
+  labs(
+    title = "Predicted Delayed Viral Load vs. Observed raw(black) vs Observed std(red)",
+    x = "Day",
+    y = "log10 copies/mL/person"
+  ) +
+  theme_minimal()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ###########plot prevalence
 burn_in_timesteps <- 30
