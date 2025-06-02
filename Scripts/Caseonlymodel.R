@@ -13,10 +13,6 @@ options(scipen=999)
 textstring <- "
 model {
   
-   #beta ~ dnorm(1.5, 0.5) T(0,)  # Truncated to prevent very high beta values
-  #beta ~ dnorm(1.3, 0.01) T(0,)  # Truncated to prevent very high beta values
-  #beta ~ dnorm(1.7, 6.25) T(0,) ##tighter prior truncated around 1.7
-   #beta~dnorm(0.8, 100) T(0,1)##worked for casemod1.SD=0.1
    beta~dnorm(0.8, 25) T(0,1) ##casemod 2.SD=0.2
 
   E0 ~ dpois(5)    #  A Poisson prior with mean 5
@@ -468,19 +464,20 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Case_mod3<- run.jags(textstring, data = dataList,
+  Case_modfinal<- run.jags(textstring, data = dataList,
                             monitor = c("beta", "kappa","phi","cases_pred",
                                         "total_lambda","report_frac","Vea","Veb","m",
                                         "delta_inv","theta_invall","omega_invall",
                                         "total_Cuminc", "active_infected"),
                             method="parallel",
-                            sample = 50000, adapt =10000, burnin = 10000, thin = 2,
+                            #sample = 50000, adapt =10000, burnin = 10000, thin = 2,
+                            sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                             n.chains = 2, inits = inits_list,
                             summarise = FALSE)
 })
 
-Case_modlist3<- as.mcmc.list(Case_mod3)
-save(Case_modlist3,file="Output/Case_modlist3.RData")
+Case_modlstfinal<- as.mcmc.list(Case_modfinal)
+save(Case_modlstfinal,file="Output/Case_modlstfinal.RData")
 
 ###############################################################
 load("Output/Case_modlist3.RData")

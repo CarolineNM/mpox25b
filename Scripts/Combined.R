@@ -37,9 +37,10 @@ model {
    mult <- exp(log_mult)
    transit_time_mean ~ dnorm(2.5, 25) T(1.5, 4)
    transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.8)
-   #tau_ww ~dgamma(30, 2.7)
    tau_ww ~ dgamma(50, 60)  # mean ≈ 0.83, SD ≈ 0.12#newcombmod8
 
+    #tau_ww ~dgamma(30, 2.7)
+   
    
   # Estimate both mean and CV
   ###other parameters
@@ -367,15 +368,28 @@ total_lambda[1] <- sum(lambda_det[1:3, 1])
       #Shedding Parameters (Fixed log10 converted outside)
       ##Viral Shedding Calculation (Daily)
       
-      daily_shedding[t] <-
-        shed_alpha * sum(P[1:3, t]) +
-        shed_A1 * sum(A1[1:3, t]) + shed_A2 * sum(A2[1:3, t]) + shed_A3 * sum(A3[1:3, t]) +
-        shed_I1 * sum(I1[1:3, t]) + shed_I2 * sum(I2[1:3, t]) + shed_I3 * sum(I3[1:3, t]) +
-        shed_A1a * sum(A1va[1:3, t]) + shed_A2a * sum(A2va[1:3, t]) + shed_A3a * sum(A3va[1:3, t]) +
-        shed_I1a * sum(I1va[1:3, t]) + shed_I2a * sum(I2va[1:3, t]) + shed_I3a * sum(I3va[1:3, t]) +
-        shed_A1b * sum(A1vb[1:3, t]) + shed_A2b * sum(A2vb[1:3, t]) + shed_A3b * sum(A3vb[1:3, t]) +
-        shed_I1b * sum(I1vb[1:3, t]) + shed_I2b * sum(I2vb[1:3, t]) + shed_I3b * sum(I3vb[1:3, t]) +
-        shed_alpha * (sum(Pva[1:3, t]) + sum(Pvb[1:3, t]))
+      # 1. Shedding from P compartments (pre-symptomatic)
+shed_P[t] <-
+  shed_alpha * (
+    sum(P[1:3, t]) +
+    sum(Pva[1:3, t]) +
+    sum(Pvb[1:3, t])
+  )
+
+# 2. Shedding from A compartments (asymptomatic)
+shed_A[t] <-
+  shed_A1 * sum(A1[1:3, t]) + shed_A2 * sum(A2[1:3, t]) + shed_A3 * sum(A3[1:3, t]) +
+  shed_A1a * sum(A1va[1:3, t]) + shed_A2a * sum(A2va[1:3, t]) + shed_A3a * sum(A3va[1:3, t]) +
+  shed_A1b * sum(A1vb[1:3, t]) + shed_A2b * sum(A2vb[1:3, t]) + shed_A3b * sum(A3vb[1:3, t])
+
+# 3. Shedding from I compartments (symptomatic)
+shed_I[t] <-
+  shed_I1 * sum(I1[1:3, t]) + shed_I2 * sum(I2[1:3, t]) + shed_I3 * sum(I3[1:3, t]) +
+  shed_I1a * sum(I1va[1:3, t]) + shed_I2a * sum(I2va[1:3, t]) + shed_I3a * sum(I3va[1:3, t]) +
+  shed_I1b * sum(I1vb[1:3, t]) + shed_I2b * sum(I2vb[1:3, t]) + shed_I3b * sum(I3vb[1:3, t])
+
+daily_shedding[t] <-
+  shed_P[t] + shed_A[t] + shed_I[t]  # Total
         
 }
   
@@ -638,22 +652,23 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_mod8<- run.jags(textstring, data = dataListcomb,
-                     monitor = c("beta","kappa","phi","ww_pred",
-                                 "transit_time_mean","mult","tau_ww",
-                                 "transit_time_cv","delayed_conc",
-                                 "total_Cuminc", "active_infected",
-                                 "total_lambda","report_frac","Vea","Veb","m",
+  Combined_final<- run.jags(textstring, data = dataListcomb,
+                     monitor = c("ww_pred","cases_pred","mult",
+                                 "shed_P","shed_A","shed_I",
+                                 "tau_ww","transit_time_mean","transit_time_cv",
+                                 "beta","kappa","phi",
+                                 "total_Cuminc", "active_infected","total_lambda",
+                                 "report_frac","Vea","Veb","m",
                                  "delta_inv","theta_invall","omega_invall"),
                      method="parallel",
                      #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                     sample = 15000, adapt =2000, burnin = 2000, thin = 2,
+                     sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                      n.chains = 2, inits = inits_list,
                      summarise = FALSE)
 })
 
-Comblist_mod8<- as.mcmc.list(Combined_mod8)
-save(Comblist_mod8,file="U:/mpox25output/Comblist_mod8.RData")
+Comblist_final<- as.mcmc.list( Combined_final)
+save(Comblist_final,file="U:/mpox25output/Comblist_final.RData")
 ############generate output
 load(file="U:/mpox25output/Comblist_mod7.RData")
 ###generate traceplots

@@ -43,8 +43,9 @@ model {
   mult <- exp(log_mult)
   tau_ww ~dgamma(30, 2.7)
   transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
-  #transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
   transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
+  #transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
+
 
 
   #tau_ww ~ dgamma(2, 2)     # Implies SD ~ 0.7 used this in wwmod5
@@ -376,16 +377,31 @@ total_lambda[1] <- sum(lambda_det[1:3, 1])
       #### --- Shedding Parameters (Fixed log10 converted outside) --- ####
       #######Viral Shedding Calculation (Daily)
       
-      daily_shedding[t] <-
-        shed_alpha * sum(P[1:3, t]) +
-        shed_A1 * sum(A1[1:3, t]) + shed_A2 * sum(A2[1:3, t]) + shed_A3 * sum(A3[1:3, t]) +
-        shed_I1 * sum(I1[1:3, t]) + shed_I2 * sum(I2[1:3, t]) + shed_I3 * sum(I3[1:3, t]) +
-        shed_A1a * sum(A1va[1:3, t]) + shed_A2a * sum(A2va[1:3, t]) + shed_A3a * sum(A3va[1:3, t]) +
-        shed_I1a * sum(I1va[1:3, t]) + shed_I2a * sum(I2va[1:3, t]) + shed_I3a * sum(I3va[1:3, t]) +
-        shed_A1b * sum(A1vb[1:3, t]) + shed_A2b * sum(A2vb[1:3, t]) + shed_A3b * sum(A3vb[1:3, t]) +
-        shed_I1b * sum(I1vb[1:3, t]) + shed_I2b * sum(I2vb[1:3, t]) + shed_I3b * sum(I3vb[1:3, t]) +
-        shed_alpha * (sum(Pva[1:3, t]) + sum(Pvb[1:3, t]))
-        
+    
+
+# 1. Shedding from P compartments (pre-symptomatic)
+shed_P[t] <-
+  shed_alpha * (
+    sum(P[1:3, t]) +
+    sum(Pva[1:3, t]) +
+    sum(Pvb[1:3, t])
+  )
+
+# 2. Shedding from A compartments (asymptomatic)
+shed_A[t] <-
+  shed_A1 * sum(A1[1:3, t]) + shed_A2 * sum(A2[1:3, t]) + shed_A3 * sum(A3[1:3, t]) +
+  shed_A1a * sum(A1va[1:3, t]) + shed_A2a * sum(A2va[1:3, t]) + shed_A3a * sum(A3va[1:3, t]) +
+  shed_A1b * sum(A1vb[1:3, t]) + shed_A2b * sum(A2vb[1:3, t]) + shed_A3b * sum(A3vb[1:3, t])
+
+# 3. Shedding from I compartments (symptomatic)
+shed_I[t] <-
+  shed_I1 * sum(I1[1:3, t]) + shed_I2 * sum(I2[1:3, t]) + shed_I3 * sum(I3[1:3, t]) +
+  shed_I1a * sum(I1va[1:3, t]) + shed_I2a * sum(I2va[1:3, t]) + shed_I3a * sum(I3va[1:3, t]) +
+  shed_I1b * sum(I1vb[1:3, t]) + shed_I2b * sum(I2vb[1:3, t]) + shed_I3b * sum(I3vb[1:3, t])
+
+daily_shedding[t] <-
+  shed_P[t] + shed_A[t] + shed_I[t]  # Total
+      
 }
   
   #### --- Advection-dispersion-delay process --- ####
@@ -660,8 +676,9 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  WW_mod12<- run.jags(textstring, data = dataListWW,
+  WW_modfinal<- run.jags(textstring, data = dataListWW,
                        monitor = c("ww_pred","delayed_conc","mult",
+                                   "shed_P","shed_A","shed_I",
                                    "tau_ww","transit_time_mean","transit_time_cv",
                                    "beta","kappa","phi","ww_pred",
                                   "total_Cuminc", "active_infected",
@@ -669,13 +686,13 @@ system.time({
                                   "delta_inv","theta_invall","omega_invall"),
                       method="parallel",
                       #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                      sample = 15000, adapt =2000, burnin = 2000, thin = 2,
+                      sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                       n.chains = 2, inits = inits_list,
                       summarise = FALSE)
 })
 
-WW_listmod12<- as.mcmc.list(WW_mod12)
-save(WW_listmod12,file="U:/mpox25output/WW_listmod12.RData")
+WW_modlstfinal<- as.mcmc.list(WW_modfinal)
+save(WW_modlstfinal,file="U:/mpox25output/WW_modlstfinal.RData")
 #########plot the output
 load("U:/mpox25output/WW_listmod12.RData")
 ###generate traceplots
