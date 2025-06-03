@@ -14,48 +14,35 @@ textstring <- "
 model {
   
   mu= 0.18           # Viral decay, fix to 0.18
-  #mult ~ dnorm(0.0005, 1e8) T(0,) ##used this in wwmod5
-  #mult ~ dnorm(1.3e-9, 1e18) T(1e-10, 1e-8)
-  #mult ~ dnorm(1e-7, 1e14) T(1e-10, 1e-5)
-  #transit_time_cv   ~ dnorm(0.3, 1) T(0,)###this crashes the model
   
-  ##combmod5
-  #mult <- 1e-8
-  #tau_ww ~ dgamma(10, 5)  # mean = 2, SD = ~0.6,tigher
-  #transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
-  #transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
+  ##priors that worked for final case model 
+   # log_mult ~ dnorm(log(1.5e-9), 400) ##final case
+   # mult <- exp(log_mult)
+   # transit_time_mean ~ dnorm(2.5, 25) T(1.5, 4)
+   # transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.8)
+   # tau_ww ~ dgamma(50, 60)  # mean ≈ 0.83, SD ≈ 0.12#newcombmod8
 
-  ##combmod6 works okay but want to try a final version
-   #mult ~ dnorm(5e-8, 1e15) T(1e-9, 1e-6)
-   #transit_time_cv ~ dnorm(0.3, 25) T(0.2, 0.8)
-   #transit_time_mean ~ dnorm(2.5, 25) T(1.5, 4)
-   #tau_ww ~ dgamma(15, 6.5)
-  
-  ##combmod7 
-   #log_mult ~ dnorm(log(1.5e-9), 200)
-   log_mult ~ dnorm(log(1.5e-9), 400) ##newcombmod8
+   #######To reun using similar priors for WW
+   
+   log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
    mult <- exp(log_mult)
-   transit_time_mean ~ dnorm(2.5, 25) T(1.5, 4)
-   transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.8)
-   tau_ww ~ dgamma(50, 60)  # mean ≈ 0.83, SD ≈ 0.12#newcombmod8
-
-    #tau_ww ~dgamma(30, 2.7)
+   tau_ww ~ dgamma(10, 1)
+   transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+   transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
    
-   
-  # Estimate both mean and CV
-  ###other parameters
+   # Estimate both mean and CV
+   ###other parameters
   
-  #beta ~ dnorm(1.7, 6.25) T(0,) ##tighter prior truncated around 1.7
-  beta~dnorm(0.8, 100) T(0,1)
+   beta~dnorm(0.8, 100) T(0,1)
+   kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
+   phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
 
 
   E0 ~ dpois(5)    #  A Poisson prior with mean 5
   P0 ~ dpois(1)  # Total pre-symptomatic individuals
   A10 ~ dpois(1) # Total asymptomatic individuals
   I10 ~ dpois(1) # Total symptomatic individuals
-  
-  kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
-  phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
+
  
   
   #delta_inv<-6.26 ## duration in E comp 6.26(5.55-6.97)
@@ -631,20 +618,39 @@ dataListcomb <- list(
   #transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
   tmax=15)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
 ###precomputed start and end dates of defining the epi weeks
+# inits_list <- list(
+#   list(
+#     log_mult = log(1.5e-9),
+#     transit_time_mean = 2.6,
+#     transit_time_cv = 0.35,
+#     tau_ww = 0.55,
+#     .RNG.name = "base::Wichmann-Hill",
+#     .RNG.seed = 42
+#   ),
+#   list(
+#     log_mult = log(1.2e-9),
+#     transit_time_mean = 2.4,
+#     transit_time_cv = 0.28,
+#     tau_ww = 0.50,
+#     .RNG.name = "base::Wichmann-Hill",
+#     .RNG.seed = 99
+#   )
+# )
+
 inits_list <- list(
   list(
-    log_mult = log(1.5e-9),
-    transit_time_mean = 2.6,
-    transit_time_cv = 0.35,
-    tau_ww = 0.55,
+    log_mult = log(1e-8),  # Based on fixed value that worked
+    tau_ww = 0.4,          # Around posterior median (0.43)
+    transit_time_mean = 2.5,  # Close to prior mean
+    transit_time_cv = 0.3,    # Close to prior mean
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 42
   ),
   list(
-    log_mult = log(1.2e-9),
-    transit_time_mean = 2.4,
-    transit_time_cv = 0.28,
-    tau_ww = 0.50,
+    log_mult = log(8e-9),  # Slight variation for chain independence
+    tau_ww = 0.5,
+    transit_time_mean = 2.8,
+    transit_time_cv = 0.35,
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 99
   )
@@ -652,7 +658,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_final<- run.jags(textstring, data = dataListcomb,
+  Combined_finalb<- run.jags(textstring, data = dataListcomb,
                      monitor = c("ww_pred","cases_pred","mult",
                                  "shed_P","shed_A","shed_I",
                                  "tau_ww","transit_time_mean","transit_time_cv",
@@ -667,8 +673,9 @@ system.time({
                      summarise = FALSE)
 })
 
-Comblist_final<- as.mcmc.list( Combined_final)
-save(Comblist_final,file="U:/mpox25output/Comblist_final.RData")
+Comblist_finalb<- as.mcmc.list( Combined_finalb)
+save(Comblist_finalb,file="U:/mpox25output/Comblist_finalb.RData")
+
 ############generate output
 load(file="U:/mpox25output/Comblist_mod7.RData")
 ###generate traceplots

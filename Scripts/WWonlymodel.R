@@ -5,6 +5,7 @@ library(mcmcplots)
 library(tidyverse)
 library(readxl)
 library(EnvStats)
+library(bayesplot)
 options(scipen=999)
 
 ###how to interpret beta in my model
@@ -24,50 +25,40 @@ textstring <- "
 model {
   
   mu= 0.18           # Viral decay, fix to 0.18
-  #mult ~ dnorm(0.0005, 1e8) T(0,) ##used this in wwmod5
-  #mult ~ dnorm(1.3e-9, 1e18) T(1e-10, 1e-8)
-  #mult ~ dnorm(1e-7, 1e14) T(1e-10, 1e-5)
-  #transit_time_cv   ~ dnorm(0.3, 1) T(0,)###this crashes the model
-  #mult <- 1e-8 ###wwmod8
-  #tau_ww ~ dgamma(10, 5)  # mean = 2, SD = ~0.6,wwmod8
-  
-  ###wwmod10 which we will use for final run
-  #log_mult ~ dnorm(log(1e-8), 25)
-  #mult <- exp(log_mult) 
-  #tau_ww ~ dgamma(15, 6.5)
-  #transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
-  #transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
 
-  ##############try wwmod11
+  ##############these worked for final ww model
+  # log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
+  # mult <- exp(log_mult)
+  # tau_ww ~dgamma(30, 2.7)
+  # transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+  # transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
+  # 
+
+
+  #####Now rerunning model with similar params to combined models
+
   log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
   mult <- exp(log_mult)
-  tau_ww ~dgamma(30, 2.7)
+  tau_ww ~ dgamma(10, 1)
   transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
   transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
-  #transit_time_cv ~ dnorm(0.3, 25) T(0.1, 1)
 
 
-
-  #tau_ww ~ dgamma(2, 2)     # Implies SD ~ 0.7 used this in wwmod5
-  #tau_ww ~ dgamma(3, 2)   # mean = 1.5, SD = ~1.2, more flexible try this first
-  #transit_time_mean ~ dnorm(3, 1.0) T(0,)  ###mean transit time in sewer(days),SD=1
-  #transit_time_cv ~ dnorm(0.3, 100) T(0,)  # SD = 0.1
-  
   
   # Estimate both mean and CV
   ###other parameters
   
-  #beta ~ dnorm(1.7, 6.25) T(0,) ##tighter prior truncated around 1.7
   beta~dnorm(0.8, 100) T(0,1)
+  kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
+  phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
+ 
 
   E0 ~ dpois(5)    #  A Poisson prior with mean 5
   P0 ~ dpois(1)  # Total pre-symptomatic individuals
   A10 ~ dpois(1) # Total asymptomatic individuals
   I10 ~ dpois(1) # Total symptomatic individuals
   
-  kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
-  phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
- 
+
   
   #delta_inv<-6.26 ## duration in E comp 6.26(5.55-6.97)
   delta_inv~dgamma(300.65298,47.98256) ## duration in E comp 6.26(5.55-6.97)
@@ -676,7 +667,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  WW_modfinal<- run.jags(textstring, data = dataListWW,
+  WW_modfinalb<- run.jags(textstring, data = dataListWW,
                        monitor = c("ww_pred","delayed_conc","mult",
                                    "shed_P","shed_A","shed_I",
                                    "tau_ww","transit_time_mean","transit_time_cv",
@@ -691,8 +682,8 @@ system.time({
                       summarise = FALSE)
 })
 
-WW_modlstfinal<- as.mcmc.list(WW_modfinal)
-save(WW_modlstfinal,file="U:/mpox25output/WW_modlstfinal.RData")
+WW_modlstfinalb<- as.mcmc.list(WW_modfinalb)
+save(WW_modlstfinalb,file="U:/mpox25output/WW_modlstfinalb.RData")
 #########plot the output
 load("U:/mpox25output/WW_listmod12.RData")
 ###generate traceplots
@@ -735,7 +726,7 @@ posterior_summaryb[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rowname
 total_new_cases_summary <- as.data.frame(posterior_summaryb[grep("ww_pred", rownames(posterior_summaryb)), ])
 total_delayed_summary <- as.data.frame(posterior_summaryb[grep("delayed_conc", rownames(posterior_summaryb)), ])
 #prev_summary <- as.data.frame(posterior_summary[grep("active_infected", rownames(posterior_summary)), ])
-#CumInc_summary <- as.data.frame(posterior_summary[grep("total_Cuminc", rownames(posterior_summary)), ])
+CumInc_summary <- as.data.frame(posterior_summary[grep("total_Cuminc", rownames(posterior_summary)), ])
 
 #nrow(total_new_cases_summaryb)
 #total_new_cases_summaryb<-total_new_cases_summary %>% mutate(Day=1:169)
@@ -844,6 +835,50 @@ plot_CumInc=ggplot(plot_CumInc, aes(x = time)) +
   theme(legend.position = "top")
 
 plot_CumInc
+
+##########generate marginal posteriors and priors comparison plots
+####
+
+# 1. Simulate prior
+prior_samples <- rbeta(10000, 10, 10)
+
+# 2. Load your actual posteriors or simulate for illustration
+posterior_case <- rbeta(10000, 4, 20)   # e.g., mean ~0.17
+posterior_ww <- rbeta(10000, 6, 14)     # e.g., mean ~0.3
+posterior_combined <- rbeta(10000, 8, 12) # e.g., mean ~0.4
+
+# 3. Combine into long format for plotting
+df <- bind_rows(
+  data.frame(source = "Prior", value = prior_samples),
+  data.frame(source = "Case-only", value = posterior_case),
+  data.frame(source = "WW-only", value = posterior_ww),
+  data.frame(source = "Combined", value = posterior_combined)
+)
+
+# 4. Plot
+ggplot(df, aes(x = value, y = source, fill = source)) +
+  ggridges::geom_density_ridges(alpha = 0.5, quantile_lines = TRUE,
+                                quantiles = 0.5, scale = 1.2) +
+  theme_minimal(base_size = 14) +
+  labs(title = "Distributions of reporting fraction",
+       subtitle = "Prior vs Posteriors from 3 models",
+       x = "report_frac",
+       y = "") +
+  scale_fill_manual(values = c("gray", "skyblue", "lightgreen", "tomato")) +
+  theme(legend.position = "none")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

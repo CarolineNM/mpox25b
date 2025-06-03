@@ -13,20 +13,16 @@ options(scipen=999)
 textstring <- "
 model {
   
-   beta~dnorm(0.8, 25) T(0,1) ##casemod 2.SD=0.2
+  #beta~dnorm(0.8, 25) T(0,1) ##casemod 2.SD=0.2
+  beta~dnorm(0.8, 100) T(0,1) ##to change this to sd=0.1
+  kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
+  phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
 
   E0 ~ dpois(5)    #  A Poisson prior with mean 5
   P0 ~ dpois(1)  # Total pre-symptomatic individuals
   A10 ~ dpois(1) # Total asymptomatic individuals
   I10 ~ dpois(1) # Total symptomatic individuals
   
-  #kappa ~ dbeta(20, 5)  ##wider prior ranging from 0 to 99%
-  kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
-  
-  
-  #phi ~ dgamma(0.1, 0.1) ##negb11 prior
-  phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
- 
   
   #delta_inv<-6.26 ## duration in E comp 6.26(5.55-6.97)
   delta_inv~dgamma(300.65298,47.98256) ## duration in E comp 6.26(5.55-6.97)
@@ -67,16 +63,11 @@ model {
   
   #####vaccine effectiveness of 1st dose 35.8% (95% CI, 22.1 to 47.1)
  
-  #Vea ~ dbeta(25.97, 45.6)     # Mean ~0.36
-  #Vea=0.30
   Vea ~ dbeta(49.3, 87.4)   ###tight priors around 36
   rsa=1-Vea   ##rsa is the residual susceptibility after dose1
   
   
   #####vaccine effectiveness of 2nd dose 66% (95% CI, 47 to 78)
-
-  #Veb ~ dbeta(31, 14)
-  #Veb=0.50
   
   Veb ~ dbeta(69.3, 35.6)  # tight priors around 66
   rsb=1-Veb   ##rsb is the residual susceptibility after dose2
@@ -464,7 +455,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Case_modfinal<- run.jags(textstring, data = dataList,
+  Case_modfinalb<- run.jags(textstring, data = dataList,
                             monitor = c("beta", "kappa","phi","cases_pred",
                                         "total_lambda","report_frac","Vea","Veb","m",
                                         "delta_inv","theta_invall","omega_invall",
@@ -476,8 +467,8 @@ system.time({
                             summarise = FALSE)
 })
 
-Case_modlstfinal<- as.mcmc.list(Case_modfinal)
-save(Case_modlstfinal,file="Output/Case_modlstfinal.RData")
+Case_modlstfinalb<- as.mcmc.list(Case_modfinalb)
+save(Case_modlstfinalb,file="Output/Case_modlstfinalb.RData")
 
 ###############################################################
 load("Output/Case_modlist3.RData")
