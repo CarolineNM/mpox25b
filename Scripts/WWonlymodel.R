@@ -36,13 +36,19 @@ model {
 
 
   #####Now rerunning model with similar params to combined models
-
+  ###this is for model b
   log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
   mult <- exp(log_mult)
   tau_ww ~ dgamma(10, 1)
   transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
   transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
 
+  #########this is for model c
+  log_mult ~ dnorm(log(3e-9), 300)
+  mult <- exp(log_mult)
+  tau_ww ~ dgamma(40, 48)
+  transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
+  transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
 
   
   # Estimate both mean and CV

@@ -23,12 +23,19 @@ model {
    # tau_ww ~ dgamma(50, 60)  # mean ≈ 0.83, SD ≈ 0.12#newcombmod8
 
    #######To reun using similar priors for WW
+   ####this was for modelb
+   #log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
+   #mult <- exp(log_mult)
+   #tau_ww ~ dgamma(10, 1)
+   #transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+   #transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
    
-   log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
-   mult <- exp(log_mult)
-   tau_ww ~ dgamma(10, 1)
-   transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
-   transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
+   #########this is for model c
+  log_mult ~ dnorm(log(3e-9), 300)
+  mult <- exp(log_mult)
+  tau_ww ~ dgamma(40, 48)
+  transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
+  transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
    
    # Estimate both mean and CV
    ###other parameters
@@ -658,8 +665,8 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_finalb<- run.jags(textstring, data = dataListcomb,
-                     monitor = c("ww_pred","cases_pred","mult",
+  Combined_finalc<- run.jags(textstring, data = dataListcomb,
+                     monitor = c("ww_pred","cases_pred","mult","log_mult",
                                  "shed_P","shed_A","shed_I",
                                  "tau_ww","transit_time_mean","transit_time_cv",
                                  "beta","kappa","phi",
@@ -673,8 +680,8 @@ system.time({
                      summarise = FALSE)
 })
 
-Comblist_finalb<- as.mcmc.list( Combined_finalb)
-save(Comblist_finalb,file="U:/mpox25output/Comblist_finalb.RData")
+Comblist_finalc<- as.mcmc.list( Combined_finalc)
+save(Comblist_finalc,file="U:/mpox25output/Comblist_finalc.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comblist_mod7.RData")
@@ -683,11 +690,11 @@ traceplot(Comblist_mod7[, "transit_time_mean"],main="Mean transit time in sewer"
 traceplot(Comblist_mod7[, "transit_time_cv"],main="Standard deviation of transit mean time")
 traceplot(Comblist_mod7[, "mult"],main="Scaling factor of viral load")
 traceplot(Comblist_mod7[, "tau_ww"],main="Precision of the dnorm likelihood")
-#traceplot(Comblist_mod4[, "beta"],main="Transmission parameter")
-#traceplot(Comblist_mod4[, "kappa"],main="Mixing probability")
-#traceplot(Comblist_mod4[, "phi"],main="Negative binomial dispersion parmeter")
-#traceplot(Comblist_mod4[, "report_frac"],main="reporting fraction")
-#traceplot(Comblist_mod4[, "m"],main="Proportion of Asymptomatic fraction")
+traceplot(Comblist_mod4[, "beta"],main="Transmission parameter")
+traceplot(Comblist_mod4[, "kappa"],main="Mixing probability")
+traceplot(Comblist_mod4[, "phi"],main="Negative binomial dispersion parmeter")
+traceplot(Comblist_mod4[, "report_frac"],main="reporting fraction")
+traceplot(Comblist_mod4[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
 chain_1_samples <- Comblist_mod7[[1]]
