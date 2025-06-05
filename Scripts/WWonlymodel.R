@@ -673,8 +673,8 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  WW_modfinalb<- run.jags(textstring, data = dataListWW,
-                       monitor = c("ww_pred","delayed_conc","mult",
+  WW_modfinalc<- run.jags(textstring, data = dataListWW,
+                       monitor = c("ww_pred","delayed_conc","mult","log_mult",
                                    "shed_P","shed_A","shed_I",
                                    "tau_ww","transit_time_mean","transit_time_cv",
                                    "beta","kappa","phi","ww_pred",
@@ -688,8 +688,8 @@ system.time({
                       summarise = FALSE)
 })
 
-WW_modlstfinalb<- as.mcmc.list(WW_modfinalb)
-save(WW_modlstfinalb,file="U:/mpox25output/WW_modlstfinalb.RData")
+WW_modlstfinalc<- as.mcmc.list(WW_modfinalc)
+save(WW_modlstfinalc,file="U:/mpox25output/WW_modlstfinalc.RData")
 #########plot the output
 load("U:/mpox25output/WW_listmod12.RData")
 ###generate traceplots
