@@ -37,11 +37,11 @@ model {
 
   #####Now rerunning model with similar params to combined models
   ###this is for model b
-  log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
-  mult <- exp(log_mult)
-  tau_ww ~ dgamma(10, 1)
-  transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
-  transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
+  #log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
+  #mult <- exp(log_mult)
+  #tau_ww ~ dgamma(10, 1)
+  #transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+  #transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
 
   #########this is for model c
   log_mult ~ dnorm(log(3e-9), 300)
@@ -398,8 +398,24 @@ shed_I[t] <-
 
 daily_shedding[t] <-
   shed_P[t] + shed_A[t] + shed_I[t]  # Total
-      
-}
+  
+  total_P[t] <- sum(P[1:3, t]) + sum(Pva[1:3, t]) + sum(Pvb[1:3, t])
+  
+  total_A[t] <-
+  sum(A1[1:3, t]) + sum(A2[1:3, t]) + sum(A3[1:3, t]) +
+  sum(A1va[1:3, t]) + sum(A2va[1:3, t]) + sum(A3va[1:3, t]) +
+  sum(A1vb[1:3, t]) + sum(A2vb[1:3, t]) + sum(A3vb[1:3, t])
+  
+  total_I[t] <-
+  sum(I1[1:3, t]) + sum(I2[1:3, t]) + sum(I3[1:3, t]) +
+  sum(I1va[1:3, t]) + sum(I2va[1:3, t]) + sum(I3va[1:3, t]) +
+  sum(I1vb[1:3, t]) + sum(I2vb[1:3, t]) + sum(I3vb[1:3, t])
+
+ }
+
+
+
+
   
   #### --- Advection-dispersion-delay process --- ####
 # Define advection-dispersion-decay using intermediate variables
@@ -684,30 +700,31 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  WW_modfinald<- run.jags(textstring, data = dataListWW,
+  WW_modfinale<- run.jags(textstring, data = dataListWW,
                        monitor = c("ww_pred","delayed_conc","mult","log_mult",
                                    "shed_P","shed_A","shed_I",
+                                   "total_P", "total_A", "total_I",
                                    "tau_ww","transit_time_mean","transit_time_cv",
                                    "beta","kappa","phi","ww_pred",
                                   "total_Cuminc", "active_infected",
                                   "total_lambda","report_frac","Vea","Veb","m",
                                   "delta_inv","theta_invall","omega_invall"),
                       method="parallel",
-                      sample = 2000, adapt =500, burnin = 500, thin = 1,
-                      #sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                      #sample = 2000, adapt =500, burnin = 500, thin = 1,
+                      sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                       n.chains = 2, inits = inits_list,
                       summarise = FALSE)
 })
 
-WW_modlstfinald<- as.mcmc.list(WW_modfinald)
-save(WW_modlstfinald,file="U:/mpox25output/WW_modlstfinald.RData")
+WW_modlstfinale<- as.mcmc.list(WW_modfinale)
+save(WW_modlstfinale,file="U:/mpox25output/WW_modlstfinale.RData")
 #########plot the output
-load("U:/mpox25output/WW_listmod12.RData")
+load("U:/mpox25output/WW_modlstfinald.RData")
 ###generate traceplots
-traceplot(WW_listmod12[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(WW_listmod12[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(WW_listmod12[, "mult"],main="Scaling factor of viral load")
-traceplot(WW_listmod12[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(WW_modlstfinald[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(WW_modlstfinald[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(WW_modlstfinald[, "mult"],main="Scaling factor of viral load")
+traceplot(WW_modlstfinald[, "tau_ww"],main="Precision of the dnorm likelihood")
 #traceplot(WW_listmod7[, "beta"],main="Transmission parameter")
 #traceplot(WW_listmod7[, "kappa"],main="Mixing probability")
 #traceplot(WW_listmod7[, "phi"],main="Negative binomial dispersion parameter")

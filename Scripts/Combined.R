@@ -384,7 +384,19 @@ shed_I[t] <-
 
 daily_shedding[t] <-
   shed_P[t] + shed_A[t] + shed_I[t]  # Total
-        
+  
+  
+  total_P[t] <- sum(P[1:3, t]) + sum(Pva[1:3, t]) + sum(Pvb[1:3, t])
+  
+  total_A[t] <-
+  sum(A1[1:3, t]) + sum(A2[1:3, t]) + sum(A3[1:3, t]) +
+  sum(A1va[1:3, t]) + sum(A2va[1:3, t]) + sum(A3va[1:3, t]) +
+  sum(A1vb[1:3, t]) + sum(A2vb[1:3, t]) + sum(A3vb[1:3, t])
+  
+  total_I[t] <-
+  sum(I1[1:3, t]) + sum(I2[1:3, t]) + sum(I3[1:3, t]) +
+  sum(I1va[1:3, t]) + sum(I2va[1:3, t]) + sum(I3va[1:3, t]) +
+  sum(I1vb[1:3, t]) + sum(I2vb[1:3, t]) + sum(I3vb[1:3, t])
 }
   
   ## Advection-dispersion-delay process
@@ -678,8 +690,9 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_finald<- run.jags(textstring, data = dataListcomb,
+  Combined_finale<- run.jags(textstring, data = dataListcomb,
                      monitor = c("ww_pred","cases_pred","mult","log_mult",
+                                 "total_P", "total_A", "total_I",
                                  "shed_P","shed_A","shed_I",
                                  "tau_ww","transit_time_mean","transit_time_cv",
                                  "beta","kappa","phi",
@@ -687,27 +700,27 @@ system.time({
                                  "report_frac","Vea","Veb","m",
                                  "delta_inv","theta_invall","omega_invall"),
                      method="parallel",
-                     sample = 2000, adapt =500, burnin = 500, thin = 1,
-                     #sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                     #sample = 2000, adapt =500, burnin = 500, thin = 1,
+                     sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                      n.chains = 2, inits = inits_list,
                      summarise = FALSE)
 })
 
-Comblist_finald<- as.mcmc.list( Combined_finald)
-save(Comblist_finald,file="U:/mpox25output/Comblist_finald.RData")
+Comblist_finale<- as.mcmc.list( Combined_finale)
+save(Comblist_finale,file="U:/mpox25output/Comblist_finale.RData")
 
 ############generate output
-load(file="U:/mpox25output/Comblist_mod7.RData")
+load(file="U:/mpox25output/Comblist_finald.RData")
 ###generate traceplots
-traceplot(Comblist_mod7[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(Comblist_mod7[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Comblist_mod7[, "mult"],main="Scaling factor of viral load")
-traceplot(Comblist_mod7[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Comblist_mod4[, "beta"],main="Transmission parameter")
-traceplot(Comblist_mod4[, "kappa"],main="Mixing probability")
-traceplot(Comblist_mod4[, "phi"],main="Negative binomial dispersion parmeter")
-traceplot(Comblist_mod4[, "report_frac"],main="reporting fraction")
-traceplot(Comblist_mod4[, "m"],main="Proportion of Asymptomatic fraction")
+traceplot(Comblist_finald[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Comblist_finald[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(Comblist_finald[, "mult"],main="Scaling factor of viral load")
+traceplot(Comblist_finald[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Comblist_finald[, "beta"],main="Transmission parameter")
+traceplot(Comblist_finald[, "kappa"],main="Mixing probability")
+traceplot(Comblist_finald[, "phi"],main="Negative binomial dispersion parmeter")
+traceplot(Comblist_finald[, "report_frac"],main="reporting fraction")
+traceplot(Comblist_finald[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
 chain_1_samples <- Comblist_mod7[[1]]
