@@ -527,28 +527,49 @@ mu_v<- c(rep(0, burn_in_timesteps), v2)   ###mu is the per capita vaccination ra
 #mutest set to zero
 #mu<- rep(0, 199)
 
-
 ##########Ww compartments#############
-tau=0.776   ##relative infectiousness of Asymptomatic vs symptomatic(0.8 covid paper,mpox range 0.1-0.5)
-shed.I1 = 12.3  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
-shed.I2 = 11.5  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
-shed.I3 = 10.2 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
-shed.I1a<-shed.I1 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 1
-shed.I2a<-shed.I2 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 2
-shed.I3a<-shed.I3# log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 3
-shed.I1b<-shed.I1 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 1
-shed.I2b<-shed.I2 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 2
-shed.I3b<-shed.I3# log10 cp/ml fecal shedding kinetics for 2nd dose symptomatic stage 3
-shed.A1 = 12.3*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 1
-shed.A2 = 11.5*tau # llog10 cp/ml fecal shedding kinetics for asymptomatic stage 2
-shed.A3 = 10.2*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 3
-shed.A1a<-shed.A1 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 1
-shed.A2a<-shed.A2 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 2
-shed.A3a<-shed.A3 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 3
-shed.A1b<-shed.A1 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 1
-shed.A2b<-shed.A2 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 2
-shed.A3b<-shed.A3 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 3
-alpha=12.3*tau   ### log10 cp/ml fecal shedding kinetics for presymptomatic
+#tau=0.776   ##relative infectiousness of Asymptomatic vs symptomatic(0.8 covid paper,mpox range 0.1-0.5)
+#shed.I1 = 12.3  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
+# shed.I2 = 11.5  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
+# shed.I3 = 10.2 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
+# shed.I1a<-shed.I1 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 1
+# shed.I2a<-shed.I2 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 2
+# shed.I3a<-shed.I3# log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 3
+# shed.I1b<-shed.I1 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 1
+# shed.I2b<-shed.I2 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 2
+# shed.I3b<-shed.I3# log10 cp/ml fecal shedding kinetics for 2nd dose symptomatic stage 3
+ #shed.A1 = 12.3*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 1
+# shed.A2 = 11.5*tau # llog10 cp/ml fecal shedding kinetics for asymptomatic stage 2
+# shed.A3 = 10.2*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 3
+# shed.A1a<-shed.A1 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 1
+# shed.A2a<-shed.A2 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 2
+# shed.A3a<-shed.A3 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 3
+# shed.A1b<-shed.A1 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 1
+# shed.A2b<-shed.A2 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 2
+# shed.A3b<-shed.A3 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 3
+# alpha=12.3*tau   ### log10 cp/ml fecal shedding kinetics for presymptomatic
+
+########1st convert all parameters to log scale
+tau=0.776
+shed.I1 = 10^12.3
+shed.I2 = 10^11.5  
+shed.I3 = 10^10.2 
+shed.I1a<-shed.I1 
+shed.I2a<-shed.I2 
+shed.I3a<-shed.I3
+shed.I1b<-shed.I1 
+shed.I2b<-shed.I2 
+shed.I3b<-shed.I3
+shed.A1 = shed.I1*tau 
+shed.A2 = shed.I2*tau 
+shed.A3 = shed.I3*tau 
+shed.A1a<-shed.A1 
+shed.A2a<-shed.A2 
+shed.A3a<-shed.A3 
+shed.A1b<-shed.A1 
+shed.A2b<-shed.A2 
+shed.A3b<-shed.A3 
+alpha_log=shed.I1*tau  
 
 # Convert all shedding rates from log10(cp/mL) to cp/mL (linear scale)
 ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
@@ -560,16 +581,6 @@ flow_L_daily <- as.numeric(unlist(flow_L_daily))
 is.numeric(flow_L_daily)
 ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 T_obs <- length(ww_obs)
-
-
-# Convert shedding rates to linear scale BEFORE the list
-shed.I1 <- 10^shed.I1; shed.I2 <- 10^shed.I2; shed.I3 <- 10^shed.I3
-shed.I1a <- 10^shed.I1a; shed.I2a <- 10^shed.I2a; shed.I3a <- 10^shed.I3a
-shed.I1b <- 10^shed.I1b; shed.I2b <- 10^shed.I2b; shed.I3b <- 10^shed.I3b
-shed.A1 <- 10^shed.A1; shed.A2 <- 10^shed.A2; shed.A3 <- 10^shed.A3
-shed.A1a <- 10^shed.A1a; shed.A2a <- 10^shed.A2a; shed.A3a <- 10^shed.A3a
-shed.A1b <- 10^shed.A1b; shed.A2b <- 10^shed.A2b; shed.A3b <- 10^shed.A3b
-alpha_log <- 10^alpha  # 
 
 # Convert flow to mL
 flow_mL_daily <- flow_L_daily * 1e3
@@ -673,7 +684,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  WW_modfinalc<- run.jags(textstring, data = dataListWW,
+  WW_modfinald<- run.jags(textstring, data = dataListWW,
                        monitor = c("ww_pred","delayed_conc","mult","log_mult",
                                    "shed_P","shed_A","shed_I",
                                    "tau_ww","transit_time_mean","transit_time_cv",
@@ -682,14 +693,14 @@ system.time({
                                   "total_lambda","report_frac","Vea","Veb","m",
                                   "delta_inv","theta_invall","omega_invall"),
                       method="parallel",
-                      #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                      sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                      sample = 2000, adapt =500, burnin = 500, thin = 1,
+                      #sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                       n.chains = 2, inits = inits_list,
                       summarise = FALSE)
 })
 
-WW_modlstfinalc<- as.mcmc.list(WW_modfinalc)
-save(WW_modlstfinalc,file="U:/mpox25output/WW_modlstfinalc.RData")
+WW_modlstfinald<- as.mcmc.list(WW_modfinald)
+save(WW_modlstfinald,file="U:/mpox25output/WW_modlstfinald.RData")
 #########plot the output
 load("U:/mpox25output/WW_listmod12.RData")
 ###generate traceplots
