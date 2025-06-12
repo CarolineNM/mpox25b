@@ -1,0 +1,1037 @@
+---
+title: "Current model runs"
+date: 09/06/2025
+format:
+  pdf:
+    pdf-engine: xelatex
+    mainfont: "Times New Roman"
+    geometry: margin=1in
+    fig-width: 8
+    fig-height: 5
+    fig-align: center
+    echo: false
+    fig-pos: 'H' 
+    code-overflow: wrap
+    code-block-font-size: 0.9em
+    toc: true
+    number-sections: true
+---
+
+1st call libraries
+```{r,message=FALSE,warning=FALSE}
+library(R2jags)
+library(runjags)
+library(mcmcplots)
+library(tidyverse)
+library(readxl)
+library(tinytex)
+library(EnvStats)
+library(bayesplot)
+library(truncnorm)
+library(ggridges)
+library(patchwork)
+options(scipen=999)
+
+```
+
+Document contains all the model results.Will decide what to include in the main section and supplementary sections after discussions with Mike.
+
+1st set of results is the Posterior predictive of the WW and cases by each model
+
+
+```{r,message=FALSE,warning=FALSE}
+
+case_dat=read_excel("D:/mpox25b/Data/case_data_V2.xlsx",sheet="cases")
+cases_obsb = case_dat$total_cases
+Cumulat_inc=case_dat$Cumulat_Inc
+##2. WW data #########################
+ww_dat=read_excel("D:/mpox25b/Data/case_data_V2.xlsx",sheet="dailyWW")
+ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW data
+ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
+##3. Load the model output
+load("D:/mpox25output/Combined_cas.RData")
+load("D:/mpox25output/Combined_WW.RData")
+load("D:/mpox25output/Comblist_finale.RData")
+######generate the model fit
+mcmc_matrixallcas<-as.matrix(Combined_cas)
+mcmc_matrixallWW<-as.matrix(Combined_WW)
+mcmc_matrixallcom<-as.matrix(Comblist_finale)
+
+# Function to compute the median and 95% credible interval
+summary_median_CI <- function(samples) {
+  med <- apply(samples, 2, median)
+  lower <- apply(samples, 2, quantile, probs = 0.025)
+  upper <- apply(samples, 2, quantile, probs = 0.975)
+  summary_table <- cbind(median = med, lower_95_CI = lower, upper_95_CI = upper)
+  return(summary_table)
+}
+posterior_summaryww <- summary_median_CI(mcmc_matrixallWW)
+posterior_summarycas <- summary_median_CI(mcmc_matrixallcas)
+posterior_summarycom <- summary_median_CI(mcmc_matrixallcom)
+
+#posterior_summarycom[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rownames(posterior_summarycom)), ]
+####generate the posterior fits
+total_ww_summary <- as.data.frame(posterior_summaryww[grep("ww_pred", rownames(posterior_summaryww)), ])
+total_ww_cas_summary <- as.data.frame(posterior_summaryww[grep("total_new_cases", rownames(posterior_summaryww)), ])
+total_cas_summary <- as.data.frame(posterior_summarycas[grep("cases_pred", rownames(posterior_summarycas)), ])
+total_cas_ww_summary <- as.data.frame(posterior_summarycas[grep("log10_concb", rownames(posterior_summarycas)), ])
+total_com_ww_summary <- as.data.frame(posterior_summarycom[grep("ww_pred", rownames(posterior_summarycom)), ])
+total_com_cas_summary <- as.data.frame(posterior_summarycom[grep("cases_pred", rownames(posterior_summarycom)), ])
+
+###########generate data for plotting
+plot_dataww <- data.frame(
+  time = 1:nrow(ww_std),                    
+  observed = ww_obs,                    # observed cases
+  median_fit = total_ww_summary$median,          # model median fit
+  lower_ci = total_ww_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_ww_summary$upper_95_CI          # upper 95% CI
+)
+
+burn_in_timesteps <- 30
+total_ww_cas_summaryb <- total_ww_cas_summary[(burn_in_timesteps + 1):nrow(total_ww_cas_summary), ]
+
+plot_dataww_cases <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  Date=case_dat$Date,
+  observed = cases_obsb,                    # observed cases
+  median_fit = total_ww_cas_summaryb$median,         # model median fit
+  lower_ci = total_ww_cas_summaryb$lower_95_CI,          # lower 95% CI
+  upper_ci = total_ww_cas_summaryb$upper_95_CI         # upper 95% CI
+)
+
+
+plot_datcas <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  Date=case_dat$Date,
+  observed = cases_obsb,                    # observed cases
+  median_fit = total_cas_summary$median,         # model median fit
+  lower_ci = total_cas_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_cas_summary$upper_95_CI          # upper 95% CI
+)
+
+
+plot_datacas_ww <- data.frame(
+  time = 1:nrow(ww_std),                    
+  observed = ww_obs,                    # observed cases
+  median_fit = total_cas_ww_summary$median,          # model median fit
+  lower_ci = total_cas_ww_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_cas_ww_summary$upper_95_CI          # upper 95% CI
+)
+
+
+plot_datcomcas <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  Date=case_dat$Date,
+  observed = cases_obsb,                    # observed cases
+  median_fit = total_com_cas_summary$median,         # model median fit
+  lower_ci = total_com_cas_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_com_cas_summary$upper_95_CI          # upper 95% CI
+)
+
+
+plot_datcomww <- data.frame(
+  time = 1:nrow(ww_std),                    
+  observed = ww_obs,                    # observed cases
+  median_fit = total_com_ww_summary$median,          # model median fit
+  lower_ci = total_com_ww_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_com_ww_summary$upper_95_CI          # upper 95% CI
+)
+
+#################Generate posterior plots##########
+custom_theme <- theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.title = element_text(size = 13),
+    axis.text = element_text(size = 11)
+  )
+
+# Shared plot elements
+plot_geom <- list(
+  geom_point(aes(y = observed), color = "black", size = 1.2, alpha = 0.7),
+  geom_line(aes(y = median_fit), color = "blue4", size = 1),
+  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "skyblue", alpha = 0.3)
+)
+
+# Viral load – WW-only model
+plot_wwfit <- ggplot(plot_dataww, aes(x = time)) +
+  plot_geom +
+  ylim(0, 15)+
+  labs(
+    x = "Time", y = "Reported viral load",
+    title = "Fit vs. observed viral load (WW-only model)"
+  ) +
+  custom_theme
+
+# Viral load – Case only model
+plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = time)) +
+  plot_geom +
+  ylim(0, 15)+
+  labs(
+    x = "Time", y = "Reported viral load",
+    title = "Fit vs. observed viral load (Case-only model)"
+  ) +
+  custom_theme
+
+# Viral load – Combined model
+plot_comwwfit <- ggplot(plot_datcomww, aes(x = time)) +
+  plot_geom +
+  ylim(0, 15)+
+  labs(
+    x = "Time", y = "Reported viral load",
+    title = "Fit vs. observed viral load (Combined model)"
+  ) +
+  custom_theme
+
+
+# Cases – Case-only model
+plot_casefit <- ggplot(plot_datcas, aes(x = time)) +
+  plot_geom +
+  ylim(0, 11)+
+  labs(
+    x = "Time", y = "Reported mpox cases",
+    title = "Fit vs. observed cases (Case-only model)"
+  ) +
+  custom_theme
+
+
+plot_casewwfit <- ggplot(plot_dataww_cases, aes(x = time)) +
+  plot_geom +
+  ylim(0, 11)+
+  labs(
+    x = "Time", y = "Reported mpox cases",
+    title = "Fit vs. observed cases (WW-only model)"
+  ) +
+  custom_theme
+
+
+# Cases – Combined model
+plot_comcasefit <- ggplot(plot_datcomcas, aes(x = time)) +
+  plot_geom +
+  ylim(0, 11)+
+  labs(
+    x = "Time", y = "Reported mpox cases",
+    title = "Fit vs. observed cases (Combined model)"
+  ) +
+  custom_theme
+
+# Combine plots using patchwork
+(plot_wwfit |plot_wwcasefit| plot_comwwfit) / (plot_casefit | plot_casewwfit|plot_comcasefit)
+
+
+```
+
+Next we plot prevalence from all the three models
+
+```{r,message=FALSE,warning=FALSE}
+
+prev_wwsummary <- as.data.frame(posterior_summaryww[grep("active_infected", rownames(posterior_summaryww)), ])
+prev_cassummary <- as.data.frame(posterior_summarycas[grep("active_infected", rownames(posterior_summarycas)), ])
+prev_comsummary <- as.data.frame(posterior_summarycom[grep("active_infected", rownames(posterior_summarycom)), ])
+
+burn_in_timesteps <- 30
+prev_wwsummaryb <- prev_wwsummary[(burn_in_timesteps + 1):nrow(prev_wwsummary), ]
+prev_cassummaryb <- prev_cassummary[(burn_in_timesteps + 1):nrow(prev_cassummary), ]
+prev_comsummaryb <- prev_comsummary[(burn_in_timesteps + 1):nrow(prev_comsummary), ]
+
+
+plot_wwprev <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  median_fit = prev_wwsummaryb$median,          # model median fit
+  lower_ci = prev_wwsummaryb$lower_95_CI,          # lower 95% CI
+  upper_ci = prev_wwsummaryb$upper_95_CI         # upper 95% CI
+)
+
+
+plot_casprev <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  median_fit = prev_cassummaryb$median,          # model median fit
+  lower_ci = prev_cassummaryb$lower_95_CI,          # lower 95% CI
+  upper_ci = prev_cassummaryb$upper_95_CI         # upper 95% CI
+)
+
+
+plot_comprev <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  median_fit = prev_comsummaryb$median,          # model median fit
+  lower_ci = prev_comsummaryb$lower_95_CI,          # lower 95% CI
+  upper_ci = prev_comsummaryb$upper_95_CI         # upper 95% CI
+)
+
+
+#############Generate prevalence plots
+# Add model labels
+plot_wwprev$model <- "WW-only"
+plot_casprev$model <- "Case-only"
+plot_comprev$model <- "Combined"
+
+# Combine into one dataframe
+plot_allprev <- bind_rows(plot_wwprev, plot_casprev, plot_comprev)
+
+plot_prev_all <- ggplot(plot_allprev, aes(x = time, y = median_fit, color = model, fill = model)) +
+  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, color = NA) +
+  geom_line(size = 1.1) +
+  labs(
+    x = "Time",
+    y = "Active prevalence",
+    title = "Model-predicted prevalence by model type"
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_color_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
+  scale_fill_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "top",
+    plot.title = element_text(face = "bold", hjust = 0.5))
+    
+
+##########Generate incidence plots##########
+Cuminc_wwsummary <- as.data.frame(posterior_summaryww[grep("total_Cuminc", rownames(posterior_summaryww)), ])
+Cuminc_cassummary <- as.data.frame(posterior_summarycas[grep("total_Cuminc", rownames(posterior_summarycas)), ])
+Cuminc_comsummary <- as.data.frame(posterior_summarycom[grep("total_Cuminc", rownames(posterior_summarycom)), ])
+
+burn_in_timesteps <- 30
+Cuminc_wwsummaryb <- Cuminc_wwsummary[(burn_in_timesteps + 1):nrow(Cuminc_wwsummary), ]
+Cuminc_cassummaryb <- Cuminc_cassummary[(burn_in_timesteps + 1):nrow(Cuminc_cassummary), ]
+Cuminc_comsummaryb <- Cuminc_comsummary[(burn_in_timesteps + 1):nrow(Cuminc_comsummary), ]
+
+
+plot_wwCuminc <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  median_fit = Cuminc_wwsummaryb$median,          # model median fit
+  lower_ci = Cuminc_wwsummaryb$lower_95_CI,          # lower 95% CI
+  upper_ci = Cuminc_wwsummaryb$upper_95_CI         # upper 95% CI
+)
+
+
+plot_casCuminc <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  median_fit = Cuminc_cassummaryb$median,          # model median fit
+  lower_ci = Cuminc_cassummaryb$lower_95_CI,          # lower 95% CI
+  upper_ci = Cuminc_cassummaryb$upper_95_CI         # upper 95% CI
+)
+
+plot_comCuminc <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  median_fit = Cuminc_comsummaryb$median,          # model median fit
+  lower_ci = Cuminc_comsummaryb$lower_95_CI,          # lower 95% CI
+  upper_ci = Cuminc_comsummaryb$upper_95_CI         # upper 95% CI
+)
+
+
+#########generate plots for cumulative incidence
+plot_wwCuminc$model <- "WW-only"
+plot_casCuminc$model <- "Case-only"
+plot_comCuminc$model <- "Combined"
+
+# Combine into one dataframe
+plot_allCuminc <- bind_rows(plot_wwCuminc, plot_casCuminc,plot_comCuminc)
+
+
+plot_Cuminc_all <- ggplot(plot_allCuminc, aes(x = time, y = median_fit, color = model, fill = model)) +
+  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, color = NA) +
+  geom_line(size = 1.1) +
+  labs(
+    x = "Time",
+    y = "Cumulative Incidence",
+    title = "Model-predicted cumulative incidence by model type"
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_color_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
+  scale_fill_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "top",
+    plot.title = element_text(face = "bold", hjust = 0.5))
+
+
+
+plot_prev_all+plot_Cuminc_all
+
+```
+
+
+
+
+```{r,message=FALSE,warning=FALSE}
+
+###############plot the relative contribution to the total viral load
+###extract first
+shedP_com <- as.matrix(Combined_cas[, grep("shed_P\\[", varnames(Combined_cas))])
+shedA_com <- as.matrix(Combined_cas[, grep("shed_A\\[", varnames(Combined_cas))])
+shedI_com <- as.matrix(Combined_cas[, grep("shed_I\\[", varnames(Combined_cas))])
+shedP_WW <- as.matrix(Combined_WW[, grep("shed_P\\[", varnames(Combined_WW))])
+shedA_WW <- as.matrix(Combined_WW[, grep("shed_A\\[", varnames(Combined_WW))])
+shedI_WW <- as.matrix(Combined_WW[, grep("shed_I\\[", varnames(Combined_WW))])
+
+
+shedcom_total <- shedP_com + shedA_com + shedI_com
+
+relcom_P <- shedP_com / shedcom_total
+relcom_A <- shedA_com / shedcom_total
+relcom_I <- shedI_com / shedcom_total
+
+
+summary_rel <- function(mat, source_label) {
+  data.frame(
+    time = 1:ncol(mat),
+    median = apply(mat, 2, median),
+    lower = apply(mat, 2, quantile, probs = 0.025),
+    upper = apply(mat, 2, quantile, probs = 0.975),
+    source = source_label
+  )
+}
+
+rel_com_all <- bind_rows(
+  summary_rel(relcom_P, "Pre-symptomatic (P)"),
+  summary_rel(relcom_A, "Asymptomatic (A)"),
+  summary_rel(relcom_I, "Symptomatic (I)")
+)
+
+shedww_total <- shedP_WW + shedA_WW + shedI_WW
+
+relww_P <- shedP_WW /shedww_total
+relww_A <- shedA_WW / shedww_total
+relww_I <- shedI_WW / shedww_total
+
+
+rel_ww_all <- bind_rows(
+  summary_rel(relww_P, "Pre-symptomatic (P)"),
+  summary_rel(relww_A, "Asymptomatic (A)"),
+  summary_rel(relww_I, "Symptomatic (I)")
+)
+
+
+
+plotrelcom=ggplot(rel_com_all, aes(x = time, y = median*100, fill = source)) +
+  geom_ribbon(aes(ymin = lower*100, ymax = upper*100), alpha = 0.2, color = NA) +
+  geom_line(aes(color = source), size = 1) +
+  labs(
+    x = "Time", y = "Proportion of total viral load",
+    title = "Relative contribution to viral shedding with 95% CrI"
+  ) +
+  scale_fill_manual(values = c("Pre-symptomatic (P)" = "skyblue",
+                               "Asymptomatic (A)" = "orange",
+                               "Symptomatic (I)" = "red")) +
+  scale_color_manual(values = c("Pre-symptomatic (P)" = "skyblue",
+                                "Asymptomatic (A)" = "orange",
+                                "Symptomatic (I)" = "red")) +
+  theme_minimal(base_size = 14) +
+  theme(legend.title = element_blank())
+
+
+
+plotrelww=ggplot(rel_ww_all, aes(x = time, y = median*100, fill = source)) +
+  geom_ribbon(aes(ymin = lower*100, ymax = upper*100), alpha = 0.2, color = NA) +
+  geom_line(aes(color = source), size = 1) +
+  labs(
+    x = "Time", y = "Proportion of total viral load",
+    title = "Relative contribution to viral shedding with 95% CrI"
+  ) +
+  scale_fill_manual(values = c("Pre-symptomatic (P)" = "skyblue",
+                               "Asymptomatic (A)" = "orange",
+                               "Symptomatic (I)" = "red")) +
+  scale_color_manual(values = c("Pre-symptomatic (P)" = "skyblue",
+                                "Asymptomatic (A)" = "orange",
+                                "Symptomatic (I)" = "red")) +
+  theme_minimal(base_size = 14) +
+  theme(legend.title = element_blank())
+
+plotrelww
+
+
+plotrelcom+plotrelww
+
+```
+
+The marginal prior-posterior distribution plots
+
+```{r,message=FALSE,warning=FALSE}
+
+load("D:/mpox25output/Combined_cas.RData")
+load("D:/mpox25output/Combined_WW.RData")
+load("D:/mpox25output/Comblist_finale.RData")
+
+#mcmc_matrixallcas<-as.matrix(Combined_cas)
+#mcmc_matrixallWW<-as.matrix(Combined_WW)
+#mcmc_matrixallcom<-as.matrix(Comblist_finale)
+
+case_mod  <- Combined_cas
+ww_mod   <- Combined_WW
+com_mod <- Comblist_finale
+
+
+#case_mod  <- Case_modlstfinalb
+#ww_mod   <- WW_modlstfinale
+#com_mod <- Comblist_finale
+#com_modb <- Comblist_final
+
+###Define parameter to model mapping
+param_model_map <- list(
+  beta = c("Case-only", "Viral load-only", "Combined"),
+  kappa = c("Case-only", "Viral load-only", "Combined"),
+  delta_inv=c("Case-only", "Viral load-only", "Combined"),
+  theta_invall=c("Case-only", "Viral load-only", "Combined"),
+  omega_invall=c("Case-only", "Viral load-only", "Combined"),
+  Vea=c("Case-only", "Viral load-only", "Combined"),
+  Veb= c("Case-only", "Viral load-only", "Combined"),
+  phi = c("Case-only", "Combined"),
+  report_frac = c("Case-only","Viral load-only","Combined"),
+  m = c("Case-only","Viral load-only","Combined"),
+  transit_time_mean = c("Case-only","Viral load-only", "Combined"),
+  transit_time_cv = c("Case-only","Viral load-only", "Combined"),
+  mult = c("Case-only","Viral load-only", "Combined"),
+  tau_ww = c("Viral load-only", "Combined")
+)
+
+###########Add parameter labels
+param_labels <- c(
+  beta = "Transmission probability, β",
+  kappa = "Mixing probability, κ",
+  phi = "Negative binomial dispersion, φ",
+  report_frac = "Reporting fraction",
+  m = "Proportion asymptomatic, m",
+  delta_inv = "Latent period (1/δ), days",
+  theta_invall = "Infectious period (1/θ), days",
+  omega_invall = "Asymptomatic period (1/ω), days",
+  Vea = "Vaccine effectiveness (1st dose)",
+  Veb = "Vaccine effectiveness (2nd dose)",
+  transit_time_mean = "Mean transit time (days)",
+  transit_time_cv = "Sd of transit time",
+  mult = "Scaling factor for viral load",
+  tau_ww = "Precision of WW likelihood (τ)"
+)
+
+
+# Set prior definitions
+prior_definitions <- list(
+  beta = function(n) rtruncnorm(n, 0, 1, mean = 0.8, sd = 0.1),
+  kappa = function(n) rbeta(n, 40, 2),
+  phi = function(n) rgamma(n, shape = 2, rate = 0.5),
+  report_frac = function(n) rbeta(n, 10, 10),
+  m = function(n) rbeta(n, 49.09, 94.88),
+  delta_inv=function(n) rgamma(n, shape = 300.6, rate = 47.98),
+  theta_invall=function(n) rgamma(n, shape = 42.3, rate = 1.99),
+  omega_invall=function(n) rgamma(n, shape = 20.6, rate = 1.45),
+  Vea=function(n) rbeta(n, shape1 = 49.3, shape2 = 87.4),
+  Veb=function(n) rbeta(n, shape1 = 69.3, shape2 = 35.6),
+  transit_time_mean = function(n) rtruncnorm(n, 1.3, 4.5, mean = 2.5, sd = sqrt(1/9)),
+  transit_time_cv = function(n) rtruncnorm(n, 0.2, 0.6, mean = 0.3, sd = sqrt(1/36)),
+  mult = function(n) exp(rnorm(n, log(3e-9), sqrt(1/300))),
+  tau_ww = function(n) rgamma(n, shape = 40, rate = 48)
+)
+
+
+
+extract_param <- function(mcmc_obj, param_name, model_label) {
+  df <- as.data.frame(as.matrix(mcmc_obj)[, param_name])
+  colnames(df) <- "value"
+  df$source <- model_label
+  df$parameter <- param_name
+  return(df)
+}
+
+##########compile full dataset
+n_samples <- 60000
+models <- list("Case-only" = case_mod, "Viral load-only" = ww_mod, "Combined" = com_mod)
+
+all_param_dfs <- list()
+
+for (param in names(param_model_map)) {
+  # Simulate prior
+  prior_df <- data.frame(
+    value = prior_definitions[[param]](n_samples),
+    source = "Prior",
+    parameter = param
+  )
+  
+  # Posteriors
+  posteriors <- list()
+  for (model_name in param_model_map[[param]]) {
+    posteriors[[model_name]] <- extract_param(models[[model_name]], param, model_name)
+  }
+  
+  all_param_dfs[[param]] <- bind_rows(prior_df, do.call(bind_rows, posteriors))
+}
+
+beta_df_all <- bind_rows(all_param_dfs)
+beta_df_all$source <- factor(beta_df_all$source, levels = c("Combined","Viral load-only","Case-only","Prior"))
+beta_df_all$parameter_label <- param_labels[beta_df_all$parameter]
+
+#####################Marginal posterior plots
+plota=ggplot(beta_df_all %>% filter(parameter %in% c("beta", "kappa","phi")), 
+       aes(x = value, y = source, fill = source)) +
+  geom_density_ridges(alpha = 0.7, 
+                      quantile_lines = TRUE, 
+                      quantiles = 0.5,
+                      scale = 0.9,
+                      rel_min_height = 0.0005) +
+  facet_wrap(~ parameter_label, scales = "free_x", ncol = 3) +
+  scale_fill_manual(values = c("gray30", "gray60", "gray70", "gray90")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12)
+  )
+plota
+
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+
+plotb=ggplot(beta_df_all %>% filter(parameter %in% c("delta_inv","theta_invall","omega_invall")), 
+             aes(x = value, y = source, fill = source)) +
+  geom_density_ridges(alpha = 0.7, 
+                      quantile_lines = TRUE, 
+                      quantiles = 0.5,
+                      scale = 0.9,
+                      rel_min_height = 0.0005) +
+  facet_wrap(~ parameter_label, scales = "free_x", ncol = 3) +
+  scale_fill_manual(values = c("gray30", "gray60", "gray70", "gray90")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12)
+  )
+
+plotb
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+
+plotc=ggplot(beta_df_all %>% filter(parameter %in% c("Vea","Veb")), 
+             aes(x = value, y = source, fill = source)) +
+  geom_density_ridges(alpha = 0.7, 
+                      quantile_lines = TRUE, 
+                      quantiles = 0.5,
+                      scale = 0.9,
+                      rel_min_height = 0.0005) +
+  facet_wrap(~ parameter_label, scales = "free_x", ncol = 2) +
+  scale_fill_manual(values = c("gray30", "gray60", "gray70", "gray90")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12)
+  )
+
+plotc
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+
+plotd=ggplot(beta_df_all %>% filter(parameter %in% c("report_frac","phi","m")), 
+             aes(x = value, y = source, fill = source)) +
+  geom_density_ridges(alpha = 0.7, 
+                      quantile_lines = TRUE, 
+                      quantiles = 0.5,
+                      scale = 0.9,
+                      rel_min_height = 0.0005) +
+  facet_wrap(~ parameter_label, scales = "free_x", ncol = 3) +
+  scale_fill_manual(values = c("gray30", "gray60", "gray70", "gray90")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12)
+  )
+
+plotd
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+
+plotf=ggplot(beta_df_all %>% filter(parameter %in% c("transit_time_mean","transit_time_cv","mult","tau_ww")), 
+             aes(x = value, y = source, fill = source)) +
+  geom_density_ridges(alpha = 0.7, 
+                      quantile_lines = TRUE, 
+                      quantiles = 0.5,
+                      scale = 0.9,
+                      rel_min_height = 0.0005) +
+  facet_wrap(~ parameter_label, scales = "free_x", ncol = 2) +
+  scale_fill_manual(values = c("gray30", "gray60", "gray70", "gray90")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12)
+  )
+
+plotf
+
+```
+
+
+Then traceplots and density plots
+
+```{r,message=FALSE,warning=FALSE}
+load("D:/mpox25output/Combined_cas.RData")
+load("D:/mpox25output/Combined_WW.RData")
+load("D:/mpox25output/Comblist_finale.RData")
+
+
+case_mod  <- Combined_cas
+ww_mod   <- Combined_WW
+com_mod <- Comblist_finale
+
+params_to_plot <- c("beta", "kappa", "phi","report_frac","m","report_frac")
+
+
+# Convert mcmc.list to long dataframe
+mcmc_df <- as.data.frame(do.call(rbind, lapply(1:length(case_mod), function(i) {
+  df <- as.data.frame(case_mod[[i]][, params_to_plot])
+  df$Chain <- paste0("Chain_", i)
+  df$Iteration <- 1:nrow(df)
+  df
+})))
+
+# Reshape to long format
+mcmc_long <- mcmc_df %>%
+  pivot_longer(cols = all_of(params_to_plot), names_to = "Parameter", values_to = "Value")
+
+
+param_labels <- c(
+  beta = "Transmission probability, β",
+  kappa = "Mixing probability, κ",
+  phi = "Negative binomial dispersion, φ",
+  report_frac = "Reporting fraction",
+  m = "Proportion asymptomatic, m"
+)
+
+
+mcmc_long$ParameterLabel <- param_labels[mcmc_long$Parameter]
+
+# Plot
+case_traceplot<-ggplot(mcmc_long, aes(x = Iteration, y = Value, color = Chain)) +
+  geom_line(alpha = 0.6) +
+  #facet_wrap(~ Parameter, scales = "free_y", ncol = 2) +
+  facet_wrap(~ ParameterLabel, scales = "free_y", ncol = 2) +
+  theme_minimal() +
+  labs(title = "Traceplots for Selected Parameters(Case-only)")
+
+case_traceplot
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+
+case_densplot<-ggplot(mcmc_long, aes(x = Value, fill = Chain)) +
+  geom_density(alpha = 0.6) +
+  facet_wrap(~ ParameterLabel, scales = "free", ncol = 2) +
+  theme_minimal(base_size = 14) +
+  labs(title = "Posterior Distributions for Selected Parameters(Case-only)", x = "Value", y = "Density") +
+  theme(legend.position = "right")
+
+case_densplot
+
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+
+load("D:/mpox25output/Combined_cas.RData")
+load("D:/mpox25output/Combined_WW.RData")
+load("D:/mpox25output/Comblist_finale.RData")
+
+
+case_mod  <- Combined_cas
+ww_mod   <- Combined_WW
+com_mod <- Comblist_finale
+
+# Select key parameters
+params_to_plot <- c("beta", "kappa","report_frac","m","transit_time_cv",
+                    "transit_time_mean", "mult", "tau_ww","report_frac")
+
+
+# Convert mcmc.list to long dataframe
+mcmcww_df <- as.data.frame(do.call(rbind, lapply(1:length(ww_mod), function(i) {
+  df <- as.data.frame(ww_mod[[i]][, params_to_plot])
+  df$Chain <- paste0("Chain_", i)
+  df$Iteration <- 1:nrow(df)
+  df
+})))
+
+# Reshape to long format
+mcmcww_long <- mcmcww_df %>%
+  pivot_longer(cols = all_of(params_to_plot), names_to = "Parameter", values_to = "Value")
+
+
+param_labels <- c(
+  beta = "Transmission probability, β",
+  kappa = "Mixing probability, κ",
+  phi = "Negative binomial dispersion, φ",
+  report_frac = "Reporting fraction",
+  m = "Proportion asymptomatic, m",
+  transit_time_cv = "SD of transit time",
+  transit_time_mean = "Mean transit time (days)",
+  mult = "Scaling factor for viral load",
+  tau_ww = "WW likelihood precision (τ)"
+)
+
+
+mcmcww_long$ParameterLabel <- param_labels[mcmcww_long$Parameter]
+
+# Plot
+ww_traceplot<-ggplot(mcmcww_long, aes(x = Iteration, y = Value, color = Chain)) +
+  geom_line(alpha = 0.6) +
+  #facet_wrap(~ Parameter, scales = "free_y", ncol = 2) +
+  facet_wrap(~ ParameterLabel, scales = "free_y", ncol = 2) +
+  theme_minimal() +
+  labs(title = "Traceplots for Selected Parameters(WW-only)")
+ww_traceplot
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+ww_densplot<-ggplot(mcmcww_long, aes(x = Value, fill = Chain)) +
+  geom_density(alpha = 0.6) +
+  facet_wrap(~ ParameterLabel, scales = "free", ncol = 2) +
+  theme_minimal(base_size = 14) +
+  labs(title = "Posterior Distributions for Selected Parameters(WW-only)", x = "Value", y = "Density") +
+  theme(legend.position = "right")
+
+ww_densplot
+
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+
+load("D:/mpox25output/Combined_cas.RData")
+load("D:/mpox25output/Combined_WW.RData")
+load("D:/mpox25output/Comblist_finale.RData")
+
+
+case_mod  <- Combined_cas
+ww_mod   <- Combined_WW
+com_mod <- Comblist_finale
+#com_modb <- Comblist_final
+# Select key parameters
+params_to_plot <- c("beta", "kappa", "phi","report_frac","m","transit_time_cv",
+                    "transit_time_mean", "mult", "tau_ww","report_frac")
+
+
+# Convert mcmc.list to long dataframe
+mcmccom_df <- as.data.frame(do.call(rbind, lapply(1:length(com_mod), function(i) {
+  df <- as.data.frame(com_mod[[i]][, params_to_plot])
+  df$Chain <- paste0("Chain_", i)
+  df$Iteration <- 1:nrow(df)
+  df
+})))
+
+# Reshape to long format
+mcmccom_long <- mcmccom_df %>%
+  pivot_longer(cols = all_of(params_to_plot), names_to = "Parameter", values_to = "Value")
+
+
+param_labels <- c(
+  beta = "Transmission probability, β",
+  kappa = "Mixing probability, κ",
+  phi = "Negative binomial dispersion, φ",
+  report_frac = "Reporting fraction",
+  m = "Proportion asymptomatic, m",
+  transit_time_cv = "SD of transit time",
+  transit_time_mean = "Mean transit time (days)",
+  mult = "Scaling factor for viral load",
+  tau_ww = "WW likelihood precision (τ)"
+)
+
+
+mcmccom_long$ParameterLabel <- param_labels[mcmccom_long$Parameter]
+
+# Plot
+com_traceplot<-ggplot(mcmccom_long, aes(x = Iteration, y = Value, color = Chain)) +
+  geom_line(alpha = 0.6) +
+  #facet_wrap(~ Parameter, scales = "free_y", ncol = 2) +
+  facet_wrap(~ ParameterLabel, scales = "free_y", ncol = 2) +
+  theme_minimal() +
+  labs(title = "Traceplots for Selected Parameters(Combined)")
+com_traceplot
+
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+com_densplot<-ggplot(mcmccom_long, aes(x = Value, fill = Chain)) +
+  geom_density(alpha = 0.6) +
+  facet_wrap(~ ParameterLabel, scales = "free", ncol = 2) +
+  theme_minimal(base_size = 14) +
+  labs(title = "Posterior Distributions for Selected Parameters(Combined)", x = "Value", y = "Density") +
+  theme(legend.position = "right")
+
+com_densplot
+
+
+```
+Then Gelman rubin diagnostics and ESS
+
+
+```{r,message=FALSE,warning=FALSE}
+
+load("D:/mpox25output/Combined_cas.RData")
+load("D:/mpox25output/Combined_WW.RData")
+load("D:/mpox25output/Comblist_finale.RData")
+
+case_mod  <- Combined_cas
+ww_mod   <- Combined_WW
+com_mod <- Comblist_finale
+
+params_of_interest <- c("beta", "kappa","report_frac","m","transit_time_cv",
+                        "transit_time_mean", "log_mult", "tau_ww","report_frac")
+
+
+ww_subset <- ww_mod[, params_of_interest]
+
+gelman <- gelman.diag(ww_subset, multivariate = FALSE)
+ess <- effectiveSize(ww_subset)
+
+
+# Create summary table
+WW_summary_table <- data.frame(
+  Parameter = rownames(gelman$psrf),
+  Rhat = round(gelman$psrf[, 1], 3),
+  ESS = round(ess[rownames(gelman$psrf)], 0)
+)
+
+print(WW_summary_table)
+
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+
+load("D:/mpox25output/Comblist_finale.RData")
+load("D:/mpox25output/WW_modlstfinale.RData")
+load("D:/mpox25output/Case_modlstfinalb.RData")
+
+case_mod  <- Case_modlstfinalb
+ww_mod   <- WW_modlstfinale
+com_mod <- Comblist_finale
+
+params_of_interest <- c("beta", "kappa", "phi","report_frac","m","transit_time_cv",
+                        "transit_time_mean", "log_mult", "tau_ww","report_frac")
+
+
+com_subset <- com_mod[, params_of_interest]
+
+gelman <- gelman.diag(com_subset, multivariate = FALSE)
+ess <- effectiveSize(com_subset)
+
+
+# Create summary table
+com_summary_table <- data.frame(
+  Parameter = rownames(gelman$psrf),
+  Rhat = round(gelman$psrf[, 1], 3),
+  ESS = round(ess[rownames(gelman$psrf)], 0)
+)
+
+print(com_summary_table)
+
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+
+load("D:/mpox25output/Comblist_finale.RData")
+load("D:/mpox25output/WW_modlstfinale.RData")
+load("D:/mpox25output/Case_modlstfinalb.RData")
+
+case_mod  <- Case_modlstfinalb
+ww_mod   <- WW_modlstfinale
+com_mod <- Comblist_finale
+
+params_of_interest <- c("beta", "kappa", "phi","report_frac","m","report_frac")
+
+
+case_subset <- case_mod[, params_of_interest]
+
+gelman <- gelman.diag(case_subset, multivariate = FALSE)
+ess <- effectiveSize(case_subset)
+
+
+# Create summary table
+case_summary_table <- data.frame(
+  Parameter = rownames(gelman$psrf),
+  Rhat = round(gelman$psrf[, 1], 3),
+  ESS = round(ess[rownames(gelman$psrf)], 0)
+)
+
+print(case_summary_table)
+
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+load("D:/mpox25output/Comblist_finale.RData")
+mcmc_matrixallcom <- as.matrix(Comblist_finale)
+
+# Function to compute the median and 95% credible interval
+summary_median_CI <- function(samples) {
+  med <- apply(samples, 2, median)
+  lower <- apply(samples, 2, quantile, probs = 0.025)
+  upper <- apply(samples, 2, quantile, probs = 0.975)
+  summary_table <- cbind(median = med, lower_95_CI = lower, upper_95_CI = upper)
+  return(summary_table)
+}
+
+posterior_summarycom <- summary_median_CI(mcmc_matrixallcom)
+
+# Function to compute sliding window correlation
+sliding_correlation <- function(pred_ww, pred_cases, window_sizes = seq(7, length(pred_ww), by = 7)) {
+  result <- data.frame(
+    window_size = integer(),
+    correlation = numeric()
+  )
+  
+  for (w in window_sizes) {
+    # Subset both series up to the current window size
+    ww_subset <- pred_ww[1:w]
+    cases_subset <- pred_cases[1:w]
+    
+    # Compute correlation if enough variance
+    if (sd(ww_subset) > 0 && sd(cases_subset) > 0) {
+      corr <- cor(ww_subset, cases_subset, method = "pearson")
+    } else {
+      corr <- NA
+    }
+    
+    result <- rbind(result, data.frame(window_size = w, correlation = corr))
+  }
+  
+  return(result)
+}
+
+
+
+# Example usage:
+# Replace these with your actual model output
+ww_pred_median <- posterior_summarycom[grep("ww_pred", rownames(posterior_summarycom)), "median"]
+cases_pred_median <- posterior_summarycom[grep("cases_pred", rownames(posterior_summarycom)), "median"]
+
+# Calculate correlation trajectory
+correlation_df <- sliding_correlation(ww_pred_median, cases_pred_median)
+correlation_df$frac_time <- correlation_df$window_size  / max(correlation_df$window_size)
+# Plot
+ggplot(correlation_df, aes(x = frac_time, y = correlation)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point() +
+  #geom_vline(xintercept = transmission_peak_day / total_days, linetype = "dashed") +
+  labs(
+    title = "Correlation vs. fraction of data used",
+    x = "Fraction of time series used",
+    y = "Pearson correlation"
+  ) +
+  theme_minimal()
+
+```

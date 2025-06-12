@@ -1,0 +1,184 @@
+---
+title: "Current viral load runs"
+date: 23/05/2025
+format:
+  pdf:
+    toc: true
+---
+
+1st call libraries
+```{r,message=FALSE,warning=FALSE}
+library(R2jags)
+library(runjags)
+library(mcmcplots)
+library(tidyverse)
+library(readxl)
+library(tinytex)
+```
+
+Most recent viral load only fit(wwmod7).
+
+I am estimating mean_transit_time,Standard deviation of mean transit time,scaling factor(mult) and precision(I/variance) of the normal likelihood used to fit the viral load data.
+
+Priors used;
+mu= 0.18           # Viral decay, fix to 0.18
+mult ~ dnorm(0.0005, 1e8) T(0,) ##Sacling factor with a low mean
+tau_ww ~ dgamma(10, 5)  # mean of 2 and standard deviation of 5
+transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5,truncated between 1 and 5
+transit_time_cv   ~ dnorm(0.3, 1) T(0.1,)  # mean = 0.3, SD ≈ 0.2,truncated between 0.1 and 1.Fix lower bound and tight sd
+
+
+```{r}
+
+
+load("D:/Mpox25output/WW_listmod7.RData")
+###generate traceplots
+traceplot(WW_listmod7[, "transit_time_mean"],main="Mean transit time in sewer;2.48[1.47-3.47")
+
+```
+
+
+```{r}
+
+###generate traceplots
+traceplot(WW_listmod7[, "transit_time_cv"],main="Mean transit sd in sewer;0.42[0.11-0.81")
+
+```
+
+```{r}
+
+###generate traceplots
+traceplot(WW_listmod7[, "mult"],main="Scaling factor;1.29e-9[4.1e-10-5.0410e-9")
+
+```
+
+```{r}
+
+###generate traceplots
+traceplot(WW_listmod7[, "tau_ww"],main="Precision of the dnorm likelihood;0.50[0.34-0.70")
+
+```
+
+```{r}
+
+###generate traceplots
+traceplot(WW_listmod7[, "tau_ww"],main="Precision of the dnorm likelihood;0.50[0.34-0.70")
+
+```
+
+```{r}
+mcmc_matrixall<-as.matrix(WW_listmod7)
+###randomly sample the list to generate summaries of predicted data
+# mcmc_matrix<-as.matrix(chain_1_samples)
+# total_samples <- nrow(mcmc_matrix)
+# # Randomly sample 1000 indices from the total number of samples
+# sample_indices <- sample(1:total_samples, size = 14000, replace = FALSE)
+# # Extract the sampled rows from the mcmc_matrix
+# sampled_mcmc <- mcmc_matrix[sample_indices, ]
+
+# Function to compute the median and 95% credible interval
+summary_median_CI <- function(samples) {
+  med <- apply(samples, 2, median)
+  lower <- apply(samples, 2, quantile, probs = 0.025)
+  upper <- apply(samples, 2, quantile, probs = 0.975)
+  summary_table <- cbind(median = med, lower_95_CI = lower, upper_95_CI = upper)
+  return(summary_table)
+}
+
+# Summarize the posterior distributions for all parameters
+#posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
+posterior_summaryb <- summary_median_CI(mcmc_matrixall)
+#posterior_summaryb[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rownames(posterior_summaryb)), ]
+
+# If you want to focus on specific parameters, e.g., total_new_cases and new_I3_cases:
+total_new_cases_summary <- as.data.frame(posterior_summaryb[grep("ww_pred", rownames(posterior_summaryb)), ])
+total_delayed_summary <- as.data.frame(posterior_summaryb[grep("delayed_conc", rownames(posterior_summaryb)), ])
+prev_summary <- as.data.frame(posterior_summaryb[grep("active_infected", rownames(posterior_summaryb)), ])
+CumInc_summary <- as.data.frame(posterior_summaryb[grep("total_Cuminc", rownames(posterior_summaryb)), ])
+
+ww_dat=read_excel("D:/mpox25b/Data/case_data_V2.xlsx",sheet="dailyWW")
+#names(ww_dat)
+ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW data
+ww_raw = ww_dat %>% select(log10_daily_avg_cp_ml) #####unstandardised WW data
+flow_L_daily=ww_dat %>% select(agg_flow_dat) ###aggregated flow data
+flow_L_daily <- as.numeric(unlist(flow_L_daily))
+is.numeric(flow_L_daily)
+ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
+
+##Create a data frame for plotting
+raw_ww_days <- ww_dat$Day # in days from beginning of *observation*, not simulation
+# Shift all by burn-in
+ww_sample_days <- raw_ww_days + 30
+obs_days <- ww_sample_days  # length 48
+obs_viral_load <- ww_raw$log10_daily_avg_cp_ml# log10(cp/mL/person)
+obs_viral_loadb <- ww_std$log10_cp_per_person_per_day# log10(cp/mL/person)
+total_delayed_summary$day <- 1:nrow(total_delayed_summary)
+
+plot_df <- total_delayed_summary %>%
+  filter(day %in% obs_days) %>%
+  mutate(observed = obs_viral_load) %>% 
+  mutate(observedb = obs_viral_loadb)
+
+#names(plot_df)
+ggplot(plot_df, aes(x = day)) +
+  geom_ribbon(aes(ymin = log10(lower_95_CI), ymax = log10(upper_95_CI)), fill = "lightblue", alpha = 0.4) +
+  geom_line(aes(y = log10(median)), color = "blue", size = 1) +
+  geom_point(aes(y = observed), color = "black", shape = 16, size = 2) +
+  geom_point(aes(y = observedb), color = "red", shape = 16, size = 2) +
+  labs(
+    title = "Predicted Delayed Viral Load vs. Observed (WW)",
+    x = "Day",
+    y = "log10 copies/mL/person"
+  ) +
+  theme_minimal()
+
+
+
+```
+```{r}
+
+plot_dataww <- data.frame(
+  time = 1:nrow(ww_std),                    # time index
+  #Time=case_dat$Date,
+  observed = ww_obs, 
+  observedb = ww_obs, 
+  # observed cases
+  median_fit = total_new_cases_summary$median,          # model median fit
+  lower_ci = total_new_cases_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_new_cases_summary$upper_95_CI           # upper 95% CI
+)
+
+# Plot the observed cases and model fit with 95% CI
+plotfit=ggplot(plot_dataww, aes(x = time)) +
+  geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
+  geom_point(aes(y = observed), color = "red", size = 1) +  # observed cases
+  geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
+  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
+  labs(x = "Time", y = "Reported viral load", title = "fit vs. Observed viral load") +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+plotfit
+
+```
+
+Current plan based on some CTGPT suggestions;
+Truncate the priors for mult;
+mult ~ dnorm(5e-7, 1e12) T(1e-8, 1e-6)
+transit_time_mean <- 2.5; either fix mean or sd?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
