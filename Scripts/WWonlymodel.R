@@ -600,6 +600,10 @@ T_obs <- length(ww_obs)
 
 # Convert flow to mL
 flow_mL_daily <- flow_L_daily * 1e3
+##########Flow rate for all data points
+flow_all<-ww_dat %>%select(flowrate)
+flow_alldaily<-as.numeric(unlist(flow_all))
+flow_mlalldaily<-flow_alldaily*1e3
 
 ###########preposses start date and end date into my data block
 # Define week indices (assuming 7-day weeks)
@@ -653,6 +657,7 @@ dataListWW <- list(
   shed_alpha = alpha_log,
   # WW model inputs
   flow_mL_daily = flow_mL_daily,
+  flow_mlalldaily=flow_mlalldaily,
   wwtp_population = 1278020,
   ww_sample_days=ww_sample_days,
   #g=gnorm,
