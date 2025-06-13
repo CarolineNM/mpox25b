@@ -455,8 +455,8 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Case_modfinalb<- run.jags(textstring, data = dataList,
-                            monitor = c("beta", "kappa","phi","cases_pred",
+  Case_modfinalc<- run.jags(textstring, data = dataList,
+                            monitor = c("beta", "kappa","phi","cases_pred","mu_nb",
                                         "total_lambda","report_frac","Vea","Veb","m",
                                         "delta_inv","theta_invall","omega_invall",
                                         "total_Cuminc", "active_infected"),
@@ -467,8 +467,8 @@ system.time({
                             summarise = FALSE)
 })
 
-Case_modlstfinalb<- as.mcmc.list(Case_modfinalb)
-save(Case_modlstfinalb,file="Output/Case_modlstfinalb.RData")
+Case_modlstfinalc<- as.mcmc.list(Case_modfinalc)
+save(Case_modlstfinalc,file="Output/Case_modlstfinalc.RData")
 
 ###############################################################
 load("Output/Case_modlist3.RData")

@@ -362,41 +362,48 @@ total_lambda[1] <- sum(lambda_det[1:3, 1])
       #Shedding Parameters (Fixed log10 converted outside)
       ##Viral Shedding Calculation (Daily)
       
-      # 1. Shedding from P compartments (pre-symptomatic)
-shed_P[t] <-
-  shed_alpha * (
-    sum(P[1:3, t]) +
-    sum(Pva[1:3, t]) +
-    sum(Pvb[1:3, t])
+      for (g in 1:3) {
+
+  # 1. Shedding from P compartments (pre-symptomatic)
+  shed_P[g, t] <- shed_alpha * (
+    P[g, t] +
+    Pva[g, t] +
+    Pvb[g, t]
   )
 
-# 2. Shedding from A compartments (asymptomatic)
-shed_A[t] <-
-  shed_A1 * sum(A1[1:3, t]) + shed_A2 * sum(A2[1:3, t]) + shed_A3 * sum(A3[1:3, t]) +
-  shed_A1a * sum(A1va[1:3, t]) + shed_A2a * sum(A2va[1:3, t]) + shed_A3a * sum(A3va[1:3, t]) +
-  shed_A1b * sum(A1vb[1:3, t]) + shed_A2b * sum(A2vb[1:3, t]) + shed_A3b * sum(A3vb[1:3, t])
+  # 2. Shedding from A compartments (asymptomatic)
+  shed_A[g, t] <- 
+    shed_A1 * A1[g, t] + shed_A2 * A2[g, t] + shed_A3 * A3[g, t] +
+    shed_A1a * A1va[g, t] + shed_A2a * A2va[g, t] + shed_A3a * A3va[g, t] +
+    shed_A1b * A1vb[g, t] + shed_A2b * A2vb[g, t] + shed_A3b * A3vb[g, t]
 
-# 3. Shedding from I compartments (symptomatic)
-shed_I[t] <-
-  shed_I1 * sum(I1[1:3, t]) + shed_I2 * sum(I2[1:3, t]) + shed_I3 * sum(I3[1:3, t]) +
-  shed_I1a * sum(I1va[1:3, t]) + shed_I2a * sum(I2va[1:3, t]) + shed_I3a * sum(I3va[1:3, t]) +
-  shed_I1b * sum(I1vb[1:3, t]) + shed_I2b * sum(I2vb[1:3, t]) + shed_I3b * sum(I3vb[1:3, t])
+  # 3. Shedding from I compartments (symptomatic)
+  shed_I[g, t] <- 
+    shed_I1 * I1[g, t] + shed_I2 * I2[g, t] + shed_I3 * I3[g, t] +
+    shed_I1a * I1va[g, t] + shed_I2a * I2va[g, t] + shed_I3a * I3va[g, t] +
+    shed_I1b * I1vb[g, t] + shed_I2b * I2vb[g, t] + shed_I3b * I3vb[g, t]
+}
 
-daily_shedding[t] <-
-  shed_P[t] + shed_A[t] + shed_I[t]  # Total
+# Total shedding across all groups (optional, if still needed)
+daily_shedding[t] <- sum(shed_P[1:3, t]) + sum(shed_A[1:3, t]) + sum(shed_I[1:3, t])
+
+
+  for (g in 1:3) {
   
-  
-  total_P[t] <- sum(P[1:3, t]) + sum(Pva[1:3, t]) + sum(Pvb[1:3, t])
-  
-  total_A[t] <-
-  sum(A1[1:3, t]) + sum(A2[1:3, t]) + sum(A3[1:3, t]) +
-  sum(A1va[1:3, t]) + sum(A2va[1:3, t]) + sum(A3va[1:3, t]) +
-  sum(A1vb[1:3, t]) + sum(A2vb[1:3, t]) + sum(A3vb[1:3, t])
-  
-  total_I[t] <-
-  sum(I1[1:3, t]) + sum(I2[1:3, t]) + sum(I3[1:3, t]) +
-  sum(I1va[1:3, t]) + sum(I2va[1:3, t]) + sum(I3va[1:3, t]) +
-  sum(I1vb[1:3, t]) + sum(I2vb[1:3, t]) + sum(I3vb[1:3, t])
+  # Pre-symptomatic (P)
+  P_total[g, t] <- P[g, t] + Pva[g, t] + Pvb[g, t]
+
+  # Asymptomatic (A)
+  A_total[g, t] <- A1[g, t] + A2[g, t] + A3[g, t] +
+                   A1va[g, t] + A2va[g, t] + A3va[g, t] +
+                   A1vb[g, t] + A2vb[g, t] + A3vb[g, t]
+
+  # Symptomatic (I)
+  I_total[g, t] <- I1[g, t] + I2[g, t] + I3[g, t] +
+                   I1va[g, t] + I2va[g, t] + I3va[g, t] +
+                   I1vb[g, t] + I2vb[g, t] + I3vb[g, t]
+  }
+
 }
   
   ## Advection-dispersion-delay process
@@ -430,6 +437,13 @@ for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
 
  ##Viral load likelihood
   ##Scaling, normalization and log transformation
+  
+  for (t in 1:T) {
+  cp_total_all[t] <- delayed_conc[t] * mult
+  cp_per_person_all[t] <- cp_total_all[t] / wwtp_population
+  cp_per_person_mL_all[t] <- cp_per_person_all[t] * flow_mlalldaily[t]
+  log10_conc_all[t] <- log(cp_per_person_mL_all[t] + 1) / log(10)
+}
 for (w in 1:T_WWobs) {
    cp_total[w] <- delayed_conc[ww_sample_days[w]] * mult
   cp_per_person[w] <- cp_total[w] / wwtp_population
@@ -440,7 +454,7 @@ for (w in 1:T_WWobs) {
   ww_obs[w] ~ dnorm(log10_conc[w], tau_ww)
   ww_pred[w] ~ dnorm(log10_conc[w], tau_ww)
 
- }
+}
 }"
 
 
@@ -596,6 +610,11 @@ T_WWobs <- length(ww_obs)
 # Convert flow to mL
 flow_mL_daily <- flow_L_daily * 1e3
 
+##########Flow rate for all data points
+flow_all<-ww_dat %>%select(flowrate)
+flow_alldaily<-as.numeric(unlist(flow_all))
+flow_mlalldaily<-flow_alldaily*1e3
+
 ###########preposses start date and end date into my data block
 # Define week indices (assuming 7-day weeks)
 
@@ -641,6 +660,7 @@ dataListcomb <- list(
   shed_alpha = alpha_log,
   # WW model inputs
   flow_mL_daily = flow_mL_daily,
+  flow_mlalldaily=flow_mlalldaily,
   wwtp_population = 1278020,
   ww_sample_days=ww_sample_days,
   # Observed WW data
@@ -690,10 +710,11 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_finale<- run.jags(textstring, data = dataListcomb,
-                     monitor = c("ww_pred","cases_pred","mult","log_mult",
-                                 "total_P", "total_A", "total_I",
-                                 "shed_P","shed_A","shed_I",
+  Combined_finalf<- run.jags(textstring, data = dataListcomb,
+                     monitor = c("ww_pred","cases_pred","log10_conc_all",
+                                 "log10_conc","mu_nb",
+                                 "P_total", "A_total", "I_total",
+                                 "shed_P", "shed_A", "shed_I","mult","log_mult",
                                  "tau_ww","transit_time_mean","transit_time_cv",
                                  "beta","kappa","phi",
                                  "total_Cuminc", "active_infected","total_lambda",
@@ -706,8 +727,8 @@ system.time({
                      summarise = FALSE)
 })
 
-Comblist_finale<- as.mcmc.list( Combined_finale)
-save(Comblist_finale,file="U:/mpox25output/Comblist_finale.RData")
+Comblist_finalf<- as.mcmc.list( Combined_finalf)
+save(Comblist_finalf,file="U:/mpox25output/Comblist_finalf.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comblist_finald.RData")
