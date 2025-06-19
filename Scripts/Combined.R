@@ -438,10 +438,10 @@ for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
  ##Viral load likelihood
   ##Scaling, normalization and log transformation
   
-  for (t in 1:T) {
+ for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
   cp_total_all[t] <- delayed_conc[t] * mult
   cp_per_person_all[t] <- cp_total_all[t] / wwtp_population
-  cp_per_person_mL_all[t] <- cp_per_person_all[t] * flow_mlalldaily[t]
+  cp_per_person_mL_all[t] <- cp_per_person_all[t] * flow_mlalldaily[t - burn_in_timesteps]
   log10_conc_all[t] <- log(cp_per_person_mL_all[t] + 1) / log(10)
 }
 for (w in 1:T_WWobs) {
@@ -611,7 +611,8 @@ T_WWobs <- length(ww_obs)
 flow_mL_daily <- flow_L_daily * 1e3
 
 ##########Flow rate for all data points
-flow_all<-ww_dat %>%select(flowrate)
+ww_flow=read_excel("Data/case_data_V2.xlsx",sheet="flowrate")
+flow_all<-ww_flow %>%select(sumflow)
 flow_alldaily<-as.numeric(unlist(flow_all))
 flow_mlalldaily<-flow_alldaily*1e3
 
@@ -710,7 +711,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_finalf<- run.jags(textstring, data = dataListcomb,
+  Combined_finalg<- run.jags(textstring, data = dataListcomb,
                      monitor = c("ww_pred","cases_pred","log10_conc_all",
                                  "log10_conc","mu_nb",
                                  "P_total", "A_total", "I_total",
@@ -727,8 +728,8 @@ system.time({
                      summarise = FALSE)
 })
 
-Comblist_finalf<- as.mcmc.list( Combined_finalf)
-save(Comblist_finalf,file="U:/mpox25output/Comblist_finalf.RData")
+Comblist_finalg<- as.mcmc.list( Combined_finalg)
+save(Comblist_finalg,file="U:/mpox25output/Comblist_finalg.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comblist_finald.RData")
