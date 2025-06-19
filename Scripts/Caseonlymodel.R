@@ -468,7 +468,7 @@ system.time({
 })
 
 Case_modlstfinalc<- as.mcmc.list(Case_modfinalc)
-save(Case_modlstfinalc,file="Output/Case_modlstfinalc.RData")
+save(Case_modlstfinalc,file="U:/mpox25output/Case_modlstfinalc.RData")
 
 ###############################################################
 load("Output/Case_modlist3.RData")
