@@ -1,3 +1,4 @@
+###########This has the convergence diagnostics,traceplots and density plots and marginal distribution plots
 #Parameters
 Parameters[,"transit_time_mean"] main="Mean transit time in sewer"
 Parameters[, "transit_time_cv"] main="Standard deviation of transit mean time"
@@ -129,52 +130,6 @@ plot2
 
 
 plot1+plot2
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

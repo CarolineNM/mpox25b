@@ -1,4 +1,5 @@
 #########Call the libraries
+####This has model fits,prevalence and cumulative incidence,relative contribution
 rm(list=ls())
 library(R2jags)
 library(runjags)
@@ -26,20 +27,21 @@ ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 #######load the three outputs
 load("D:/mpox25output/Comblist_finalg.RData")
 load("D:/mpox25output/Combined_WWc.RData")
-load("D:/mpox25output/Combined_casb.RData")
-load("D:/mpox25output/Combined_cas.RData")
+load("D:/mpox25output/Combined_casc.RData")
+
+#load("D:/mpox25output/Combined_cas.RData")
 #load("D:/mpox25output/Case_modlstfinalc.RData")
 
 ######What did we save in each model?
 options(max.print = 10000)  # or higher depending on your needs
 print(colnames(as.matrix(Combined_casb)))
 cat(colnames(as.matrix(Combined_casb)), sep = "\n")
-View(as.data.frame(colnames(as.matrix(Comblist_finalg))))
+View(as.data.frame(colnames(as.matrix(Combined_casb))))
 
 ######generate the model fit
 mcmc_matrixallWW<-as.matrix(Combined_WWc)
-mcmc_matrixallcas<-as.matrix(Combined_casb)
-mcmc_matrixallcasb<-as.matrix(Combined_cas)
+mcmc_matrixallcas<-as.matrix(Combined_casb) ###most recent version
+#mcmc_matrixallcasb<-as.matrix(Combined_cas)
 mcmc_matrixallcom<-as.matrix(Comblist_finalg)
 
 # Function to compute the median and 95% credible interval
@@ -52,13 +54,13 @@ summary_median_CI <- function(samples) {
 }
 
 posterior_summarycas <- summary_median_CI(mcmc_matrixallcas)
-posterior_summarycasb <- summary_median_CI(mcmc_matrixallcasb)
+#posterior_summarycasb <- summary_median_CI(mcmc_matrixallcasb)###most recent version
 posterior_summarycom <- summary_median_CI(mcmc_matrixallcom)
 posterior_summaryww <- summary_median_CI(mcmc_matrixallWW)
 
 total_cas_summary <- as.data.frame(posterior_summarycas[grep("cases_pred", rownames(posterior_summarycas)), ])
 total_casb_summary <- as.data.frame(posterior_summarycas[grep("mu_nb", rownames(posterior_summarycas)), ])
-total_cas_ww_summary <- as.data.frame(posterior_summarycasb[grep("log10_conc", rownames(posterior_summarycasb)), ])
+total_cas_ww_summary <- as.data.frame(posterior_summarycas[grep("^log10_conc\\[", rownames(posterior_summarycas)), ])
 
 total_ww_summary <- as.data.frame(posterior_summaryww[grep("ww_pred", rownames(posterior_summaryww)), ])
 total_ww_summaryb <- as.data.frame(posterior_summaryww[grep("^log10_conc\\[", rownames(posterior_summaryww)), ])
@@ -237,6 +239,7 @@ plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = time)) +
   ) +
   custom_theme
 
+plot_wwcasefit
 # Viral load – Combined model
 plot_comwwfit <- ggplot(plot_datcomww, aes(x = time)) +
   plot_geom +
@@ -473,11 +476,7 @@ shedI_2 <- as.matrix(Comblist_finalg[, grep("shed_I\\[2,", varnames(Comblist_fin
 shedI_3 <- as.matrix(Comblist_finalg[, grep("shed_I\\[3,", varnames(Comblist_finalg))])
 
 
-# Total shedding across all groups (denominator)
-shedP_total <- shedP_1 + shedP_2 + shedP_3
-shedA_total <- shedA_1 + shedA_2 + shedA_3
-shedI_total <- shedI_1 + shedI_2 + shedI_3
-shed_total <- shedP_total + shedA_total + shedI_total
+
 
 # Total shedding for each group (denominator)
 
@@ -626,6 +625,7 @@ shedI_2 <- as.matrix(Comblist_finalg[, grep("shed_I\\[2,", varnames(Comblist_fin
 shedI_3 <- as.matrix(Comblist_finalg[, grep("shed_I\\[3,", varnames(Comblist_finalg))])
 
 
+
 # Total shedding across all groups (denominator)
 shedP_total <- shedP_1 + shedP_2 + shedP_3
 shedA_total <- shedA_1 + shedA_2 + shedA_3
@@ -753,18 +753,6 @@ rel_I2 <- shedI_2 / (shedI_1 + shedI_2 + shedI_3)
 rel_I3 <- shedI_3 / (shedI_1 + shedI_2 + shedI_3)
 
 
-summary_rel_group_comp <- function(mat, group_label, comp_label) {
-  data.frame(
-    time = 1:ncol(mat),
-    median = apply(mat, 2, median, na.rm = TRUE),
-    lower = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
-    upper = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
-    group = group_label,
-    compartment = comp_label
-  )
-}
-
-
 rel_P1_sum <- summary_rel_group_comp(rel_P1, "Group 1", "Pre-symptomatic (P)")
 rel_P2_sum <- summary_rel_group_comp(rel_P2, "Group 2", "Pre-symptomatic (P)")
 rel_P3_sum <- summary_rel_group_comp(rel_P3, "Group 3", "Pre-symptomatic (P)")
@@ -803,6 +791,7 @@ plotrel<-ggplot(rel_all_comp_df, aes(x = time, y = median, fill = group, color =
   theme_minimal(base_size = 14) +
   theme(legend.position = "bottom")
 
+plotrel
 
 ggsave(
   filename = "D:/Mpox25output/Figures/plotrel.tiff",
@@ -814,145 +803,6 @@ ggsave(
   device = "tiff",
   compression = "lzw"
 )
-
-
-##########Now plot the contribution from each group
-##################Summarising correlation across posteriors#############
-mcmc_matrixallcom <- as.matrix(Comblist_finalg)
-
-# Function to compute the median and 95% credible interval
-summary_median_CI <- function(samples) {
-  med <- apply(samples, 2, median)
-  lower <- apply(samples, 2, quantile, probs = 0.025)
-  upper <- apply(samples, 2, quantile, probs = 0.975)
-  summary_table <- cbind(median = med, lower_95_CI = lower, upper_95_CI = upper)
-  return(summary_table)
-}
-
-posterior_summarycom <- summary_median_CI(mcmc_matrixallcom)
-
-# Function to compute sliding window correlation
-sliding_correlation <- function(pred_ww, pred_cases, window_sizes = seq(7, length(pred_ww), by = 7)) {
-  result <- data.frame(
-    window_size = integer(),
-    correlation = numeric()
-  )
-  
-  for (w in window_sizes) {
-    # Subset both series up to the current window size
-    ww_subset <- pred_ww[1:w]
-    cases_subset <- pred_cases[1:w]
-    
-    # Compute correlation if enough variance
-    if (sd(ww_subset) > 0 && sd(cases_subset) > 0) {
-      corr <- cor(ww_subset, cases_subset, method = "pearson")
-    } else {
-      corr <- NA
-    }
-    
-    result <- rbind(result, data.frame(window_size = w, correlation = corr))
-  }
-  
-  return(result)
-}
-
-
-# Example usage:
-# Replace these with your actual model output
-ww_pred_median <- posterior_summarycom[grep("^log10_conc_all\\[", rownames(posterior_summarycom)), "median"]
-cases_pred_median <- posterior_summarycom[grep("mu_nb", rownames(posterior_summarycom)), "median"]
-
-# Calculate correlation trajectory
-correlation_df <- sliding_correlation(ww_pred_median, cases_pred_median)
-correlation_df$frac_time <- correlation_df$window_size  / max(correlation_df$window_size)
-
-
-# Estimate transmission peak day from predicted cases
-transmission_peak_day <- which.max(cases_pred_median)
-total_days <- length(cases_pred_median)
-transmission_peak_frac <- transmission_peak_day / total_days
-
-# Enhanced plot
-finalplt=ggplot(correlation_df, aes(x = frac_time, y = correlation)) +
-  # Optional shaded pre- and post-peak phases
-  annotate("rect", xmin = 0, xmax = transmission_peak_frac, ymin = -Inf, ymax = Inf,
-           alpha = 0.1, fill = "gray70") +
-  annotate("rect", xmin = transmission_peak_frac, xmax = 1, ymin = -Inf, ymax = Inf,
-           alpha = 0.05, fill = "gray90") +
-  
-  # Correlation line
-  geom_line(color = "grey", size = 1.2) +
-  geom_point(color = "grey", size = 2) +
-  
-  # Vertical line at transmission peak
-  geom_vline(xintercept = transmission_peak_frac, linetype = "dashed", color = "black", linewidth = 0.8) +
-  annotate("text", x = transmission_peak_frac, y = max(correlation_df$correlation, na.rm = TRUE),
-           label = "Peak transmission", vjust = -1, hjust = -0.1, size = 4) +
-  
-  # Axis and labels
-  scale_x_continuous(labels = percent_format(accuracy = 1), breaks = seq(0, 1, 0.1)) +
-  scale_y_continuous(limits = c(0.9, 1), expand = expansion(mult = c(0, 0.05))) +
-  labs(
-    title = "Temporal correlation between viral load and predicted cases",
-    subtitle = "Combined model output, with dashed line at peak infectiousness",
-    x = "Fraction of time series used",
-    y = "Pearson correlation (log10 viral load vs. predicted cases)"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold"),
-    plot.subtitle = element_text(margin = margin(b = 10)),
-    panel.grid.minor = element_blank()
-  )
-
-finalplt
-
-
-
-####counterfactual overlays
-# Example structure if you compute multiple correlations:
-correlation_all <- bind_rows(
-  sliding_correlation(ww_pred_baseline, case_pred_baseline) %>% mutate(scenario = "Baseline"),
-  sliding_correlation(ww_pred_alt, case_pred_alt) %>% mutate(scenario = "Faster transit"),
-  ...
-)
-
-ggplot(correlation_all, aes(x = frac_time, y = correlation, color = scenario)) +
-  geom_line(size = 1.1) +
-  labs(x = "Fraction of time series", y = "Pearson correlation", color = "Scenario")
-
-
-
-
-
-
-
-# Plot
-XX=ggplot(correlation_df, aes(x = frac_time, y = correlation)) +
-  geom_line(color = "blue", size = 1) +
-  geom_point() +
-  #geom_vline(xintercept = transmission_peak_day / total_days, linetype = "dashed") +
-  labs(
-    title = "Correlation of predicted cases and viral load",
-    x = "Fraction of time series used",
-    y = "Pearson correlation "
-  ) +
-  theme_minimal()
-
-
-ggsave(
-  filename = "D:/Mpox25output/Figures/Corplot.tiff",
-  plot = XX,  # use your actual plot variable here
-  width = 12,
-  height = 7,
-  dpi = 300,
-  units = "in",
-  device = "tiff",
-  compression = "lzw"
-)
-
-summary(rbeta(1000,7,3))
-
 
 
 
