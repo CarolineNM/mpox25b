@@ -26,22 +26,21 @@ ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 
 #######load the three outputs
 load("D:/mpox25output/Comblist_finalg.RData")
-load("D:/mpox25output/Combined_WWc.RData")
-load("D:/mpox25output/Combined_casc.RData")
+load("D:/mpox25output/Combined_WWd.RData")
+load("D:/mpox25output/Combined_casd.RData")
 
 #load("D:/mpox25output/Combined_cas.RData")
 #load("D:/mpox25output/Case_modlstfinalc.RData")
 
 ######What did we save in each model?
-options(max.print = 10000)  # or higher depending on your needs
-print(colnames(as.matrix(Combined_casb)))
-cat(colnames(as.matrix(Combined_casb)), sep = "\n")
-View(as.data.frame(colnames(as.matrix(Combined_casb))))
+# options(max.print = 10000)  # or higher depending on your needs
+# print(colnames(as.matrix(Combined_casb)))
+# cat(colnames(as.matrix(Combined_casb)), sep = "\n")
+# View(as.data.frame(colnames(as.matrix(Combined_casb))))
 
 ######generate the model fit
-mcmc_matrixallWW<-as.matrix(Combined_WWc)
-mcmc_matrixallcas<-as.matrix(Combined_casb) ###most recent version
-#mcmc_matrixallcasb<-as.matrix(Combined_cas)
+mcmc_matrixallWW<-as.matrix(Combined_WWd)
+mcmc_matrixallcas<-as.matrix(Combined_casd) ###most recent version
 mcmc_matrixallcom<-as.matrix(Comblist_finalg)
 
 # Function to compute the median and 95% credible interval
@@ -54,17 +53,19 @@ summary_median_CI <- function(samples) {
 }
 
 posterior_summarycas <- summary_median_CI(mcmc_matrixallcas)
-#posterior_summarycasb <- summary_median_CI(mcmc_matrixallcasb)###most recent version
 posterior_summarycom <- summary_median_CI(mcmc_matrixallcom)
 posterior_summaryww <- summary_median_CI(mcmc_matrixallWW)
 
 total_cas_summary <- as.data.frame(posterior_summarycas[grep("cases_pred", rownames(posterior_summarycas)), ])
 total_casb_summary <- as.data.frame(posterior_summarycas[grep("mu_nb", rownames(posterior_summarycas)), ])
 total_cas_ww_summary <- as.data.frame(posterior_summarycas[grep("^log10_conc\\[", rownames(posterior_summarycas)), ])
+total_cas_wwb_summary <- as.data.frame(posterior_summarycas[grep("ww_pred", rownames(posterior_summarycas)), ])
 
 total_ww_summary <- as.data.frame(posterior_summaryww[grep("ww_pred", rownames(posterior_summaryww)), ])
 total_ww_summaryb <- as.data.frame(posterior_summaryww[grep("^log10_conc\\[", rownames(posterior_summaryww)), ])
 total_ww_cas_summary <- as.data.frame(posterior_summaryww[grep("mu_nb", rownames(posterior_summaryww)), ])
+total_ww_casb_summary <- as.data.frame(posterior_summaryww[grep("cases_pred", rownames(posterior_summaryww)), ])
+
 
 total_com_ww_summary <- as.data.frame(posterior_summarycom[grep("ww_pred", rownames(posterior_summarycom)), ])
 total_com_ww_summaryb <- as.data.frame(posterior_summaryww[grep("^log10_conc\\[", rownames(posterior_summaryww)), ])
@@ -72,7 +73,7 @@ total_com_cas_summary <- as.data.frame(posterior_summarycom[grep("cases_pred", r
 total_com_cas_summaryb <- as.data.frame(posterior_summarycom[grep("mu_nb", rownames(posterior_summarycom)), ])
 
 
-###########generate data for plotting posterior predictive plots
+###########generate data from the combined ww model##############3
 plot_dataww <- data.frame(
   time = 1:nrow(ww_std),                    
   observed = ww_obs,                    # observed cases
@@ -101,7 +102,16 @@ plot_dataww_cases <- data.frame(
   upper_ci = total_ww_cas_summary$upper_95_CI         # upper 95% CI
 )
 
+plot_dataww_casesb <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  Date=case_dat$Date,
+  observed = cases_obsb,                    # observed cases
+  median_fit = total_ww_casb_summary$median,         # model median fit
+  lower_ci = total_ww_casb_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_ww_casb_summary$upper_95_CI         # upper 95% CI
+)
 
+###############generate data from the combined case model##########################
 plot_datcas <- data.frame(
   time = 1:nrow(case_dat),                    # time index
   Date=case_dat$Date,
@@ -128,6 +138,17 @@ plot_datacas_ww <- data.frame(
   lower_ci = total_cas_ww_summary$lower_95_CI,          # lower 95% CI
   upper_ci = total_cas_ww_summary$upper_95_CI          # upper 95% CI
 )
+
+
+plot_datacas_wwb <- data.frame(
+  time = 1:nrow(ww_std),                    
+  observed = ww_obs,                    # observed cases
+  median_fit = total_cas_wwb_summary$median,          # model median fit
+  lower_ci = total_cas_wwb_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_cas_wwb_summary$upper_95_CI          # upper 95% CI
+)
+
+####################generate data from the combined model############################
 
 plot_datcomcas <- data.frame(
   time = 1:nrow(case_dat),                    # time index
@@ -183,7 +204,7 @@ plot_geom <- list(
 # Cases – Case-only model
 plot_casefit <- ggplot(plot_datcas, aes(x = time)) +
   plot_geom +
-  ylim(0, 11)+
+  ylim(0, 20)+
   labs(
     x = "Time", y = "Reported mpox cases",
     title = "Fit vs. observed cases (Case-only model)"
@@ -200,6 +221,7 @@ plot_casefitb <- ggplot(plot_datcasb, aes(x = time)) +
   ) +
   custom_theme
 
+# Cases – ww-only model
 plot_casewwfit <- ggplot(plot_dataww_cases, aes(x = time)) +
   plot_geom +
   ylim(0, 11)+
@@ -208,6 +230,17 @@ plot_casewwfit <- ggplot(plot_dataww_cases, aes(x = time)) +
     title = "Fit vs. observed cases (WW-only model)"
   ) +
   custom_theme
+
+# Cases – ww-only model
+plot_casewwfitb <- ggplot(plot_dataww_casesb, aes(x = time)) +
+  plot_geom +
+  ylim(0, 20)+
+  labs(
+    x = "Time", y = "Reported mpox cases",
+    title = "Fit vs. observed cases (WW-only model)"
+  ) +
+  custom_theme
+
 
 # Viral load – WW-only model
 plot_wwfit <- ggplot(plot_dataww, aes(x = time)) +
@@ -221,7 +254,7 @@ plot_wwfit <- ggplot(plot_dataww, aes(x = time)) +
 
 plot_wwfitb <- ggplot(plot_datawwb, aes(x = time)) +
   plot_geom +
-  ylim(0, 15)+
+  ylim(0, 17)+
   labs(
     x = "Time", y = "Reported viral load",
     title = "Fit vs. observed viral load (WW-only model)"
@@ -232,18 +265,27 @@ plot_wwfitb <- ggplot(plot_datawwb, aes(x = time)) +
 # Viral load – Case only model
 plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = time)) +
   plot_geom +
-  ylim(0, 15)+
+  ylim(0, 17)+
   labs(
     x = "Time", y = "Reported viral load",
     title = "Fit vs. observed viral load (Case-only model)"
   ) +
   custom_theme
 
-plot_wwcasefit
+plot_wwcasefitb <- ggplot(plot_datacas_wwb, aes(x = time)) +
+  plot_geom +
+  ylim(0, 17)+
+  labs(
+    x = "Time", y = "Reported viral load",
+    title = "Fit vs. observed viral load (Case-only model)"
+  ) +
+  custom_theme
+
+
 # Viral load – Combined model
 plot_comwwfit <- ggplot(plot_datcomww, aes(x = time)) +
   plot_geom +
-  ylim(0, 15)+
+  ylim(0, 17)+
   labs(
     x = "Time", y = "Reported viral load",
     title = "Fit vs. observed viral load (Combined model)"
@@ -252,7 +294,7 @@ plot_comwwfit <- ggplot(plot_datcomww, aes(x = time)) +
 
 plot_comwwfitb <- ggplot(plot_datcomwwb, aes(x = time)) +
   plot_geom +
-  ylim(0, 15)+
+  ylim(0, 17)+
   labs(
     x = "Time", y = "Reported viral load",
     title = "Fit vs. observed viral load (Combined model)"
@@ -263,7 +305,7 @@ plot_comwwfitb <- ggplot(plot_datcomwwb, aes(x = time)) +
 # Cases – Combined model
 plot_comcasefit <- ggplot(plot_datcomcas, aes(x = time)) +
   plot_geom +
-  ylim(0, 11)+
+  ylim(0, 20)+
   labs(
     x = "Time", y = "Reported mpox cases",
     title = "Fit vs. observed cases (Combined model)"
@@ -289,17 +331,19 @@ plot_comcasefit
 plot_comwwfitb
 plot_comwwfit
 plot_wwcasefit
+plot_wwcasefitb
 plot_wwfitb
 plot_wwfit
 plot_casewwfit
+plot_casewwfitb
 plot_casefitb
 plot_casefit
 
 
-ZZ=(plot_casefit+plot_comcasefit+plot_casewwfit)/(plot_casefitb+plot_comcasefitb+plot_casewwfit)
+ZZ=(plot_casefit+plot_comcasefit+plot_casewwfitb)/(plot_casefitb+plot_comcasefitb+plot_casewwfit)
 ZZ
 
-yy=(plot_wwfit+plot_comwwfit+plot_wwcasefit)/(plot_wwfitb+plot_comwwfitb+plot_wwcasefit)
+yy=(plot_wwfit+plot_comwwfit+plot_wwcasefitb)/(plot_wwfitb+plot_comwwfitb+plot_wwcasefit)
 yy
 
 
