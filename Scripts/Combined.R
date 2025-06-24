@@ -31,11 +31,20 @@ model {
    #transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
    
    #########this is for model c
-  log_mult ~ dnorm(log(3e-9), 300)
-  mult <- exp(log_mult)
-  tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
-  transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
+  # log_mult ~ dnorm(log(3e-9), 300)
+  # mult <- exp(log_mult)
+  # tau_ww ~ dgamma(40, 48)
+  # transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
+  # transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
+   
+   #########this is for model h
+   
+   log_mult ~ dnorm(log(3e-9), 40)
+   mult <- exp(log_mult)
+   tau_ww ~ dgamma(40, 48)
+   transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
+   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
+   
    
    # Estimate both mean and CV
    ###other parameters
@@ -711,7 +720,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_finalg<- run.jags(textstring, data = dataListcomb,
+  Combined_finalh<- run.jags(textstring, data = dataListcomb,
                      monitor = c("ww_pred","cases_pred","log10_conc_all",
                                  "log10_conc","mu_nb",
                                  "P_total", "A_total", "I_total",
@@ -728,8 +737,8 @@ system.time({
                      summarise = FALSE)
 })
 
-Comblist_finalg<- as.mcmc.list( Combined_finalg)
-save(Comblist_finalg,file="U:/mpox25output/Comblist_finalg.RData")
+Comblist_finalh<- as.mcmc.list( Combined_finalh)
+save(Comblist_finalh,file="U:/mpox25output/Comblist_finalh.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comblist_finald.RData")

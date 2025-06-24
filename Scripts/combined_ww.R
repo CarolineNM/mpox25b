@@ -31,11 +31,21 @@ model {
    #transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
    
    #########this is for model c
-  log_mult ~ dnorm(log(3e-9), 300)
+  # log_mult ~ dnorm(log(3e-9), 300)
+  # mult <- exp(log_mult)
+  # tau_ww ~ dgamma(40, 48)
+  # transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
+  # transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
+  
+  
+    #########this is for model e
+  log_mult ~ dnorm(log(3e-9), 40)
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
-  transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
+  transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
+  transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
+  
+  
    
    # Estimate both mean and CV
    ###other parameters

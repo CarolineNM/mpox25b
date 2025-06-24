@@ -30,13 +30,16 @@ model {
    #transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
    #transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
    
-   #########this is for model c
-  log_mult ~ dnorm(log(3e-9), 300)
+   #########this is for model e
+  #log_mult ~ dnorm(log(3e-9), 300)
+  log_mult ~ dnorm(log(3e-9), 40)
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
-  transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
-   
+  #transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
+  transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
+  #transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
+  transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
+
    # Estimate both mean and CV
    ###other parameters
   
@@ -692,7 +695,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_casd<- run.jags(textstring, data = dataListcomb,
+  Combined_case<- run.jags(textstring, data = dataListcomb,
                              monitor = c("log10_conc","cases_pred","mu_nb","mult","log_mult",
                                          "P_total","A_total", "I_total","ww_pred","tau_ww",
                                          "shed_P","shed_A","shed_I",
@@ -708,8 +711,8 @@ system.time({
                              summarise = FALSE)
 })
 
-Combined_casd<- as.mcmc.list( Combined_casd)
-save(Combined_casd,file="U:/mpox25output/Combined_casd.RData")
+Combined_case<- as.mcmc.list( Combined_case)
+save(Combined_case,file="U:/mpox25output/Combined_case.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comblist_finald.RData")
