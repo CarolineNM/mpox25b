@@ -25,9 +25,9 @@ ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW dat
 ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 
 #######load the three outputs
-load("D:/mpox25output/Comblist_finalg.RData")
-load("D:/mpox25output/Combined_WWd.RData")
-load("D:/mpox25output/Combined_casd.RData")
+load("D:/mpox25output/Comblist_finalh.RData")
+load("D:/mpox25output/Combined_WWe.RData")
+load("D:/mpox25output/Combined_case.RData")
 
 #load("D:/mpox25output/Combined_cas.RData")
 #load("D:/mpox25output/Case_modlstfinalc.RData")
@@ -39,9 +39,9 @@ load("D:/mpox25output/Combined_casd.RData")
 # View(as.data.frame(colnames(as.matrix(Combined_casb))))
 
 ######generate the model fit
-mcmc_matrixallWW<-as.matrix(Combined_WWd)
-mcmc_matrixallcas<-as.matrix(Combined_casd) ###most recent version
-mcmc_matrixallcom<-as.matrix(Comblist_finalg)
+mcmc_matrixallWW<-as.matrix(Combined_WWe)
+mcmc_matrixallcas<-as.matrix(Combined_case) ###most recent version
+mcmc_matrixallcom<-as.matrix(Comblist_finalh)
 
 # Function to compute the median and 95% credible interval
 summary_median_CI <- function(samples) {
@@ -90,8 +90,6 @@ plot_datawwb <- data.frame(
   upper_ci = total_ww_summaryb$upper_95_CI          # upper 95% CI
 )
 
-burn_in_timesteps <- 30
-total_ww_cas_summaryb <- total_ww_cas_summary[(burn_in_timesteps + 1):nrow(total_ww_cas_summary), ]
 
 plot_dataww_cases <- data.frame(
   time = 1:nrow(case_dat),                    # time index
@@ -346,11 +344,10 @@ ZZ
 yy=(plot_wwfit+plot_comwwfit+plot_wwcasefitb)/(plot_wwfitb+plot_comwwfitb+plot_wwcasefit)
 yy
 
-
 ggsave(
-  filename = "D:/Mpox25output/Figures/modfit.tiff",
+  filename = "D:/Mpox25output/Figures/modfitb.tiff",
   plot = yy,  # use your actual plot variable here
-  width = 13,
+  width = 14,
   height = 7,
   dpi = 300,
   units = "in",
