@@ -14,30 +14,58 @@ textstring <- "
 model {
   
   mu= 0.18           # Viral decay, fix to 0.18
-  tau_ww ~ dgamma(2, 2)     # Implies SD ~ 0.7 in log10 space
-  transit_time_mean ~ dnorm(3, 1.0) T(0,)  ###mean transit time in sewer(days),SD=1
-  #transit_time_cv ~ dnorm(0.3, 100) T(0,)  # SD = 0.1
-  mult ~ dunif(1e-4, 1e-2)  # Wider scaling prior(option 3)
   
-  #mult ~ dnorm(0.0005, 1e8) T(1e-5, 0.001) ##new scaling factor
-  #transit_time_mean ~ dnorm(3, 1.0) T(0,)  ###mean transit time in sewer(days),SD=1
-  #transit_time_cv ~ dnorm(0.3, 100) T(0,)  # SD = 0.1
+  ##priors that worked for final case model 
+   # log_mult ~ dnorm(log(1.5e-9), 400) ##final case
+   # mult <- exp(log_mult)
+   # transit_time_mean ~ dnorm(2.5, 25) T(1.5, 4)
+   # transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.8)
+   # tau_ww ~ dgamma(50, 60)  # mean ≈ 0.83, SD ≈ 0.12#newcombmod8
+
+   #######To reun using similar priors for WW
+   ####this was for modelb
+   #log_mult ~ dnorm(log(7e-9), 200) #reduce sd of scaling factor
+   #mult <- exp(log_mult)
+   #tau_ww ~ dgamma(10, 1)
+   #transit_time_mean ~ dnorm(2.5, 4) T(1, 5)     # mean = 2.5 days, SD ≈ 0.5
+   #transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
+   
+   #########this is for model c
+  # log_mult ~ dnorm(log(3e-9), 300)
+  # mult <- exp(log_mult)
+  # tau_ww ~ dgamma(40, 48)
+  # transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
+  # transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
   
+   #########this is for model h
+   
+   # log_mult ~ dnorm(log(3e-9), 40)
+   # mult <- exp(log_mult)
+   # tau_ww ~ dgamma(40, 48)
+   # transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
+   # transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
+   
+   #############this is for model j
+   log_mult ~ dnorm(log(3e-9), 1)
+   mult <- exp(log_mult)
+   tau_ww ~ dgamma(40, 48)
+   transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
+   transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
+   
   
-  ###other parameters
+   # Estimate both mean and CV
+   ###other parameters
   
-  #beta ~ dnorm(1.7, 6.25) T(0,) ##tighter prior truncated around 1.7
-  beta~dnorm(0.8, 100) T(0,1)
+   beta~dnorm(0.8, 100) T(0,1)
+   kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
+   phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
+
 
   E0 ~ dpois(5)    #  A Poisson prior with mean 5
   P0 ~ dpois(1)  # Total pre-symptomatic individuals
   A10 ~ dpois(1) # Total asymptomatic individuals
   I10 ~ dpois(1) # Total symptomatic individuals
-  
-  kappa ~ dbeta(40, 2)  ### Mean ~0.95, 95% CI ≈ [0.85, 0.995]
-  phi ~ dgamma(2, 0.5)  # Mean = 4, SD = ~2.8
- 
-  
+
  
   
   #delta_inv<-6.26 ## duration in E comp 6.26(5.55-6.97)
@@ -350,16 +378,48 @@ total_lambda[1] <- sum(lambda_det[1:3, 1])
       #Shedding Parameters (Fixed log10 converted outside)
       ##Viral Shedding Calculation (Daily)
       
-      daily_shedding[t] <-
-        shed_alpha * sum(P[1:3, t]) +
-        shed_A1 * sum(A1[1:3, t]) + shed_A2 * sum(A2[1:3, t]) + shed_A3 * sum(A3[1:3, t]) +
-        shed_I1 * sum(I1[1:3, t]) + shed_I2 * sum(I2[1:3, t]) + shed_I3 * sum(I3[1:3, t]) +
-        shed_A1a * sum(A1va[1:3, t]) + shed_A2a * sum(A2va[1:3, t]) + shed_A3a * sum(A3va[1:3, t]) +
-        shed_I1a * sum(I1va[1:3, t]) + shed_I2a * sum(I2va[1:3, t]) + shed_I3a * sum(I3va[1:3, t]) +
-        shed_A1b * sum(A1vb[1:3, t]) + shed_A2b * sum(A2vb[1:3, t]) + shed_A3b * sum(A3vb[1:3, t]) +
-        shed_I1b * sum(I1vb[1:3, t]) + shed_I2b * sum(I2vb[1:3, t]) + shed_I3b * sum(I3vb[1:3, t]) +
-        shed_alpha * (sum(Pva[1:3, t]) + sum(Pvb[1:3, t]))
-        
+      for (g in 1:3) {
+
+  # 1. Shedding from P compartments (pre-symptomatic)
+  shed_P[g, t] <- shed_alpha * (
+    P[g, t] +
+    Pva[g, t] +
+    Pvb[g, t]
+  )
+
+  # 2. Shedding from A compartments (asymptomatic)
+  shed_A[g, t] <- 
+    shed_A1 * A1[g, t] + shed_A2 * A2[g, t] + shed_A3 * A3[g, t] +
+    shed_A1a * A1va[g, t] + shed_A2a * A2va[g, t] + shed_A3a * A3va[g, t] +
+    shed_A1b * A1vb[g, t] + shed_A2b * A2vb[g, t] + shed_A3b * A3vb[g, t]
+
+  # 3. Shedding from I compartments (symptomatic)
+  shed_I[g, t] <- 
+    shed_I1 * I1[g, t] + shed_I2 * I2[g, t] + shed_I3 * I3[g, t] +
+    shed_I1a * I1va[g, t] + shed_I2a * I2va[g, t] + shed_I3a * I3va[g, t] +
+    shed_I1b * I1vb[g, t] + shed_I2b * I2vb[g, t] + shed_I3b * I3vb[g, t]
+}
+
+# Total shedding across all groups (optional, if still needed)
+daily_shedding[t] <- sum(shed_P[1:3, t]) + sum(shed_A[1:3, t]) + sum(shed_I[1:3, t])
+
+
+  for (g in 1:3) {
+  
+  # Pre-symptomatic (P)
+  P_total[g, t] <- P[g, t] + Pva[g, t] + Pvb[g, t]
+
+  # Asymptomatic (A)
+  A_total[g, t] <- A1[g, t] + A2[g, t] + A3[g, t] +
+                   A1va[g, t] + A2va[g, t] + A3va[g, t] +
+                   A1vb[g, t] + A2vb[g, t] + A3vb[g, t]
+
+  # Symptomatic (I)
+  I_total[g, t] <- I1[g, t] + I2[g, t] + I3[g, t] +
+                   I1va[g, t] + I2va[g, t] + I3va[g, t] +
+                   I1vb[g, t] + I2vb[g, t] + I3vb[g, t]
+  }
+
 }
   
   ## Advection-dispersion-delay process
@@ -393,6 +453,13 @@ for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
 
  ##Viral load likelihood
   ##Scaling, normalization and log transformation
+  
+ for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
+  cp_total_all[t] <- delayed_conc[t] * mult
+  cp_per_person_all[t] <- cp_total_all[t] / wwtp_population
+  cp_per_person_mL_all[t] <- cp_per_person_all[t] * flow_mlalldaily[t - burn_in_timesteps]
+  log10_conc_all[t] <- log(cp_per_person_mL_all[t] + 1) / log(10)
+}
 for (w in 1:T_WWobs) {
    cp_total[w] <- delayed_conc[ww_sample_days[w]] * mult
   cp_per_person[w] <- cp_total[w] / wwtp_population
@@ -403,7 +470,7 @@ for (w in 1:T_WWobs) {
   ww_obs[w] ~ dnorm(log10_conc[w], tau_ww)
   ww_pred[w] ~ dnorm(log10_conc[w], tau_ww)
 
- }
+}
 }"
 
 
@@ -499,33 +566,49 @@ mu_v<- c(rep(0, burn_in_timesteps), v2)   ###mu is the per capita vaccination ra
 
 
 ##########Ww compartments#############
-<<<<<<< HEAD
-tau=0.776   ##relative infectiousness of Asymptomatic vs symptomatic(0.776 Brand et al)
-shed.I1 = 20.4  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
-shed.I2 = 17.9  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
-shed.I3 = 13.9 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
-=======
-tau=0.776   ##relative infectiousness of Asymptomatic vs symptomatic(0.8 covid paper)
-shed.I1 = 12.3  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
-shed.I2 = 11.5  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
-shed.I3 = 10.2 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
->>>>>>> 0c06248c306da5eea8317d96f17cf63b9c62cc5a
-shed.I1a<-shed.I1 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 1
-shed.I2a<-shed.I2 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 2
-shed.I3a<-shed.I3# log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 3
-shed.I1b<-shed.I1 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 1
-shed.I2b<-shed.I2 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 2
-shed.I3b<-shed.I3# log10 cp/ml fecal shedding kinetics for 2nd dose symptomatic stage 3
-shed.A1 = 12.3*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 1
-shed.A2 = 11.5*tau # llog10 cp/ml fecal shedding kinetics for asymptomatic stage 2
-shed.A3 = 10.2*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 3
-shed.A1a<-shed.A1 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 1
-shed.A2a<-shed.A2 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 2
-shed.A3a<-shed.A3 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 3
-shed.A1b<-shed.A1 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 1
-shed.A2b<-shed.A2 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 2
-shed.A3b<-shed.A3 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 3
-alpha=12.3*tau   ### log10 cp/ml fecal shedding kinetics for presymptomatic
+# tau=0.776   ##relative infectiousness of Asymptomatic vs symptomatic(0.8 covid paper)
+# shed.I1 = 12.3  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
+# shed.I2 = 11.5  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
+# shed.I3 = 10.2 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
+# shed.I1a<-shed.I1 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 1
+# shed.I2a<-shed.I2 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 2
+# shed.I3a<-shed.I3# log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 3
+# shed.I1b<-shed.I1 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 1
+# shed.I2b<-shed.I2 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 2
+# shed.I3b<-shed.I3# log10 cp/ml fecal shedding kinetics for 2nd dose symptomatic stage 3
+# shed.A1 = 12.3*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 1
+# shed.A2 = 11.5*tau # llog10 cp/ml fecal shedding kinetics for asymptomatic stage 2
+# shed.A3 = 10.2*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 3
+# shed.A1a<-shed.A1 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 1
+# shed.A2a<-shed.A2 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 2
+# shed.A3a<-shed.A3 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 3
+# shed.A1b<-shed.A1 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 1
+# shed.A2b<-shed.A2 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 2
+# shed.A3b<-shed.A3 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 3
+# alpha=12.3*tau   ### log10 cp/ml fecal shedding kinetics for presymptomatic
+
+
+########1st convert all parameters to log scale
+tau=0.776
+shed.I1 = 10^12.3
+shed.I2 = 10^11.5  
+shed.I3 = 10^10.2 
+shed.I1a<-shed.I1 
+shed.I2a<-shed.I2 
+shed.I3a<-shed.I3
+shed.I1b<-shed.I1 
+shed.I2b<-shed.I2 
+shed.I3b<-shed.I3
+shed.A1 = shed.I1*tau 
+shed.A2 = shed.I2*tau 
+shed.A3 = shed.I3*tau 
+shed.A1a<-shed.A1 
+shed.A2a<-shed.A2 
+shed.A3a<-shed.A3 
+shed.A1b<-shed.A1 
+shed.A2b<-shed.A2 
+shed.A3b<-shed.A3 
+alpha_log=shed.I1*tau  
 
 # Convert all shedding rates from log10(cp/mL) to cp/mL (linear scale)
 ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
@@ -540,18 +623,14 @@ is.numeric(flow_L_daily)
 ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 T_WWobs <- length(ww_obs)
 
-
-# Convert shedding rates to linear scale BEFORE the list
-shed.I1 <- 10^shed.I1; shed.I2 <- 10^shed.I2; shed.I3 <- 10^shed.I3
-shed.I1a <- 10^shed.I1a; shed.I2a <- 10^shed.I2a; shed.I3a <- 10^shed.I3a
-shed.I1b <- 10^shed.I1b; shed.I2b <- 10^shed.I2b; shed.I3b <- 10^shed.I3b
-shed.A1 <- 10^shed.A1; shed.A2 <- 10^shed.A2; shed.A3 <- 10^shed.A3
-shed.A1a <- 10^shed.A1a; shed.A2a <- 10^shed.A2a; shed.A3a <- 10^shed.A3a
-shed.A1b <- 10^shed.A1b; shed.A2b <- 10^shed.A2b; shed.A3b <- 10^shed.A3b
-alpha_log <- 10^alpha  # 
-
 # Convert flow to mL
 flow_mL_daily <- flow_L_daily * 1e3
+
+##########Flow rate for all data points
+ww_flow=read_excel("Data/case_data_V2.xlsx",sheet="flowrate")
+flow_all<-ww_flow %>%select(sumflow)
+flow_alldaily<-as.numeric(unlist(flow_all))
+flow_mlalldaily<-flow_alldaily*1e3
 
 ###########preposses start date and end date into my data block
 # Define week indices (assuming 7-day weeks)
@@ -598,70 +677,97 @@ dataListcomb <- list(
   shed_alpha = alpha_log,
   # WW model inputs
   flow_mL_daily = flow_mL_daily,
+  flow_mlalldaily=flow_mlalldaily,
   wwtp_population = 1278020,
   ww_sample_days=ww_sample_days,
   # Observed WW data
   ww_obs = ww_obs,  # or ww_raw if unstandardized
   cases_obs=cases_obsb,
   ####precomputed g to include in the advection dispersion decay model
-  transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
-  tmax=18)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
+  #transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
+  tmax=15)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
 ###precomputed start and end dates of defining the epi weeks
+# inits_list <- list(
+#   list(
+#     log_mult = log(1.5e-9),
+#     transit_time_mean = 2.6,
+#     transit_time_cv = 0.35,
+#     tau_ww = 0.55,
+#     .RNG.name = "base::Wichmann-Hill",
+#     .RNG.seed = 42
+#   ),
+#   list(
+#     log_mult = log(1.2e-9),
+#     transit_time_mean = 2.4,
+#     transit_time_cv = 0.28,
+#     tau_ww = 0.50,
+#     .RNG.name = "base::Wichmann-Hill",
+#     .RNG.seed = 99
+#   )
+# )
 
 inits_list <- list(
   list(
-    beta = 0.8, kappa = 0.95, report_frac = 0.50, phi = 4,
-    Vea = 0.3, Veb = 0.5, 
-    transit_time_mean = 2.4, mult = 0.0005,  # instead of mult
-    .RNG.name = "base::Wichmann-Hill", .RNG.seed = 69
+    log_mult = log(1e-8),  # Based on fixed value that worked
+    tau_ww = 0.4,          # Around posterior median (0.43)
+    transit_time_mean = 2.5,  # Close to prior mean
+    transit_time_cv = 0.3,    # Close to prior mean
+    .RNG.name = "base::Wichmann-Hill",
+    .RNG.seed = 42
   ),
   list(
-    beta = 0.9, kappa = 0.92, report_frac = 0.55, phi = 5,
-    Vea = 0.3, Veb = 0.5,
-    transit_time_mean = 2.6, mult = 0.0004, # instead of mult
-    .RNG.name = "base::Wichmann-Hill", .RNG.seed = 99
+    log_mult = log(8e-9),  # Slight variation for chain independence
+    tau_ww = 0.5,
+    transit_time_mean = 2.8,
+    transit_time_cv = 0.35,
+    .RNG.name = "base::Wichmann-Hill",
+    .RNG.seed = 99
   )
 )
 
-
 #Run the model with different initial values for each chain
 system.time({
-  Combined_mod4<- run.jags(textstring, data = dataListcomb,
-                      monitor = c("beta", "kappa","phi","ww_pred","cases_pred",
-                                  "transit_time_mean","mult","tau_ww",
-                                  "total_Cuminc", "active_infected",
-                                  "total_lambda","report_frac","Vea","Veb","m",
-                                  "delta_inv","theta_invall","omega_invall"),
-                      method="parallel",
-                      sample = 30000, adapt =10000, burnin = 10000, thin = 2,
-                      #sample = 500, adapt =10, burnin = 10, thin = 1,
-                      n.chains = 2, inits = inits_list,
-                      summarise = FALSE)
+  Combined_finalJ<- run.jags(textstring, data = dataListcomb,
+                     monitor = c("ww_pred","cases_pred","log10_conc_all",
+                                 "log10_conc","mu_nb",
+                                 "P_total", "A_total", "I_total",
+                                 "shed_P", "shed_A", "shed_I","mult","log_mult",
+                                 "tau_ww","transit_time_mean","transit_time_cv",
+                                 "beta","kappa","phi",
+                                 "total_Cuminc", "active_infected","total_lambda",
+                                 "report_frac","Vea","Veb","m",
+                                 "delta_inv","theta_invall","omega_invall"),
+                     method="parallel",
+                     #sample = 2000, adapt =500, burnin = 500, thin = 1,
+                     sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                     n.chains = 2, inits = inits_list,
+                     summarise = FALSE)
 })
 
-Comblist_mod4<- as.mcmc.list(Combined_mod4)
-save(Comblist_mod4,file="U:/mpox25output/Comblist_mod4.RData")
+Comblist_finalJ<- as.mcmc.list( Combined_finalJ)
+save(Comblist_finalJ,file="U:/mpox25output/Comblist_finalJ.RData")
 
-load("U:/mpox25output/Comblist_mod4.RData")
+############generate output
+load(file="U:/mpox25output/Comblist_finald.RData")
 ###generate traceplots
-traceplot(Comblist_mod4[, "transit_time_mean"],main="Mean transit time in sewer")
-#traceplot(Comblist_mod4[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Comblist_mod4[, "mult"],main="Scaling factor of viral load")
-traceplot(Comblist_mod4[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Comblist_mod4[, "beta"],main="Transmission parameter")
-traceplot(Comblist_mod4[, "kappa"],main="Mixing probability")
-traceplot(Comblist_mod4[, "phi"],main="Negative binomial dispersion parmeter")
-traceplot(Comblist_mod4[, "report_frac"],main="reporting fraction")
-traceplot(Comblist_mod4[, "m"],main="Proportion of Asymptomatic fraction")
+traceplot(Comblist_finald[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Comblist_finald[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(Comblist_finald[, "mult"],main="Scaling factor of viral load")
+traceplot(Comblist_finald[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Comblist_finald[, "beta"],main="Transmission parameter")
+traceplot(Comblist_finald[, "kappa"],main="Mixing probability")
+traceplot(Comblist_finald[, "phi"],main="Negative binomial dispersion parmeter")
+traceplot(Comblist_finald[, "report_frac"],main="reporting fraction")
+traceplot(Comblist_finald[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
-chain_1_samples <- Comblist_mod4[[1]]
-mcmc_matrixall<-as.matrix(Comblist_mod4)
+chain_1_samples <- Comblist_mod7[[1]]
+mcmc_matrixall<-as.matrix(Comblist_mod7)
 ###randomly sample the list to generate summaries of predicted data
 mcmc_matrix<-as.matrix(chain_1_samples)
 total_samples <- nrow(mcmc_matrix)
 # Randomly sample 1000 indices from the total number of samples
-sample_indices <- sample(1:total_samples, size = 29000, replace = FALSE)
+sample_indices <- sample(1:total_samples, size = 9000, replace = FALSE)
 # Extract the sampled rows from the mcmc_matrix
 sampled_mcmc <- mcmc_matrix[sample_indices, ]
 
@@ -675,15 +781,17 @@ summary_median_CI <- function(samples) {
 }
 
 # Summarize the posterior distributions for all parameters
-posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
+#posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
 posterior_summaryb <- summary_median_CI(mcmc_matrixall)
-posterior_summaryb[grep("beta|kappa|phi|mult|tau_ww|transit_time_mean|transit_time_cv|report_frac", rownames(posterior_summaryb)), ]
+posterior_summaryb[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rownames(posterior_summaryb)), ]
 
 # If you want to focus on specific parameters, e.g., total_new_cases and new_I3_cases:
-total_new_WW_summary <- as.data.frame(posterior_summary[grep("ww_pred", rownames(posterior_summary)), ])
-total_new_case_summary <- as.data.frame(posterior_summary[grep("cases_pred", rownames(posterior_summary)), ])
-prev_summary <- as.data.frame(posterior_summary[grep("active_infected", rownames(posterior_summary)), ])
-CumInc_summary <- as.data.frame(posterior_summary[grep("total_Cuminc", rownames(posterior_summary)), ])
+total_new_WW_summary <- as.data.frame(posterior_summaryb[grep("ww_pred", rownames(posterior_summaryb)), ])
+total_delayed_summary <- as.data.frame(posterior_summaryb[grep("delayed_conc", rownames(posterior_summaryb)), ])
+
+#total_new_case_summary <- as.data.frame(posterior_summary[grep("cases_pred", rownames(posterior_summary)), ])
+#prev_summary <- as.data.frame(posterior_summaryb[grep("active_infected", rownames(posterior_summaryb)), ])
+#CumInc_summary <- as.data.frame(posterior_summaryb[grep("total_Cuminc", rownames(posterior_summaryb)), ])
 
 ###read in the observed WW data
 ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
@@ -695,31 +803,30 @@ ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 #ww_obs = as.numeric(unlist(ww_stdlinear$cp_per_person_per_day))
 ###read in the observed case data
 #total_new_cases_summaryb<-total_new_cases_summary %>% mutate(Day=1:169)
-case_dat=read_excel("Data/case_data_V2.xlsx",sheet="cases")
-cases_obsb = case_dat %>% select(total_cases)
-
-##########Generate case data fir
-##Create a data frame for plotting
-plot_casedat <- data.frame(
-  time = 1:nrow(cases_obsb),                    # time index
-  Date=case_dat$Date,
-  observed = cases_obsb$total_cases,                    # observed cases
-  median_fit = total_new_case_summary$median,          # model median fit
-  lower_ci = total_new_case_summary$lower_95_CI,          # lower 95% CI
-  upper_ci = total_new_case_summary$upper_95_CI           # upper 95% CI
-)
-
-# Plot the observed cases and model fit with 95% CI
-plot_casefit=ggplot(plot_casedat, aes(x = time)) +
-  geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
-  geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
-  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
-  labs(x = "Time", y = "Reported Mpox cases", title = "fit vs. Observed Cases") +
-  theme_minimal() +
-  theme(legend.position = "top")
-
-plot_casefit
-
+# case_dat=read_excel("Data/case_data_V2.xlsx",sheet="cases")
+# cases_obsb = case_dat %>% select(total_cases)
+# 
+# ##########Generate case data fir
+# ##Create a data frame for plotting
+# plot_casedat <- data.frame(
+#   time = 1:nrow(cases_obsb),                    # time index
+#   Date=case_dat$Date,
+#   observed = cases_obsb$total_cases,                    # observed cases
+#   median_fit = total_new_case_summary$median,          # model median fit
+#   lower_ci = total_new_case_summary$lower_95_CI,          # lower 95% CI
+#   upper_ci = total_new_case_summary$upper_95_CI           # upper 95% CI
+# )
+# 
+# # Plot the observed cases and model fit with 95% CI
+# plot_casefit=ggplot(plot_casedat, aes(x = time)) +
+#   geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
+#   geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
+#   geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
+#   labs(x = "Time", y = "Reported Mpox cases", title = "fit vs. Observed Cases") +
+#   theme_minimal() +
+#   theme(legend.position = "top")
+# 
+# plot_casefit
 
 ##Create a data frame for plotting
 plot_wwdata <- data.frame(
@@ -741,6 +848,53 @@ plot_wwfit=ggplot(plot_wwdata, aes(x = time)) +
   theme(legend.position = "top")
 
 plot_wwfit
+
+##Create a data frame for plotting
+obs_days <- ww_sample_days  # length 48
+obs_viral_load <- ww_raw$log10_daily_avg_cp_ml# log10(cp/mL/person)
+total_delayed_summary$day <- 1:nrow(total_delayed_summary)
+
+plot_df <- total_delayed_summary %>%
+  filter(day %in% obs_days) %>%
+  mutate(observedraw = obs_viral_load,
+         observedstd = ww_obs)
+
+#names(plot_df)
+ggplot(plot_df, aes(x = day)) +
+  geom_ribbon(aes(ymin = log10(lower_95_CI), ymax = log10(upper_95_CI)), fill = "lightblue", alpha = 0.4) +
+  geom_line(aes(y = log10(median)), color = "blue", size = 1) +
+  geom_point(aes(y = observedraw), color = "black", shape = 16, size = 2) +
+  geom_point(aes(y = observedstd), color = "red", shape = 16, size = 2) +
+  labs(
+    title = "Predicted Delayed Viral Load vs. Observed raw(black) vs Observed std(red)",
+    x = "Day",
+    y = "log10 copies/mL/person"
+  ) +
+  theme_minimal()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ###########plot prevalence
 burn_in_timesteps <- 30
