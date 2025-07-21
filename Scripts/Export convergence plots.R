@@ -25,9 +25,9 @@ ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW dat
 ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 
 #######load the three outputs
-load("D:/mpox25output/Comblist_finalh.RData")
-load("D:/mpox25output/Combined_WWe.RData")
-load("D:/mpox25output/Combined_case.RData")
+load("D:/mpox25output/Comblist_finalg.RData")
+load("D:/mpox25output/Combined_WWd.RData")
+load("D:/mpox25output/Combined_casd.RData")
 
 #load("D:/mpox25output/Combined_cas.RData")
 #load("D:/mpox25output/Case_modlstfinalc.RData")
@@ -39,9 +39,9 @@ load("D:/mpox25output/Combined_case.RData")
 # View(as.data.frame(colnames(as.matrix(Combined_casb))))
 
 ######generate the model fit
-mcmc_matrixallWW<-as.matrix(Combined_WWe)
-mcmc_matrixallcas<-as.matrix(Combined_case) ###most recent version
-mcmc_matrixallcom<-as.matrix(Comblist_finalh)
+mcmc_matrixallWW<-as.matrix(Combined_WWd)
+mcmc_matrixallcas<-as.matrix(Combined_casd) ###most recent version
+mcmc_matrixallcom<-as.matrix(Comblist_finalg)
 
 # Function to compute the median and 95% credible interval
 summary_median_CI <- function(samples) {
@@ -68,14 +68,15 @@ total_ww_casb_summary <- as.data.frame(posterior_summaryww[grep("cases_pred", ro
 
 
 total_com_ww_summary <- as.data.frame(posterior_summarycom[grep("ww_pred", rownames(posterior_summarycom)), ])
-total_com_ww_summaryb <- as.data.frame(posterior_summaryww[grep("^log10_conc\\[", rownames(posterior_summaryww)), ])
+total_com_ww_summaryb <- as.data.frame(posterior_summarycom[grep("^log10_conc\\[", rownames(posterior_summarycom)), ])
 total_com_cas_summary <- as.data.frame(posterior_summarycom[grep("cases_pred", rownames(posterior_summarycom)), ])
 total_com_cas_summaryb <- as.data.frame(posterior_summarycom[grep("mu_nb", rownames(posterior_summarycom)), ])
 
 
 ###########generate data from the combined ww model##############3
 plot_dataww <- data.frame(
-  time = 1:nrow(ww_std),                    
+  time = 1:nrow(ww_std),
+  Date=ww_dat$date,
   observed = ww_obs,                    # observed cases
   median_fit = total_ww_summary$median,          # model median fit
   lower_ci = total_ww_summary$lower_95_CI,          # lower 95% CI
@@ -83,7 +84,8 @@ plot_dataww <- data.frame(
 )
 
 plot_datawwb <- data.frame(
-  time = 1:nrow(ww_std),                    
+  time = 1:nrow(ww_std),
+  Date=ww_dat$date,
   observed = ww_obs,                    # observed cases
   median_fit = total_ww_summaryb$median,          # model median fit
   lower_ci = total_ww_summaryb$lower_95_CI,          # lower 95% CI
@@ -130,7 +132,8 @@ plot_datcasb <- data.frame(
 
 
 plot_datacas_ww <- data.frame(
-  time = 1:nrow(ww_std),                    
+  time = 1:nrow(ww_std), 
+  Date=ww_dat$date,
   observed = ww_obs,                    # observed cases
   median_fit = total_cas_ww_summary$median,          # model median fit
   lower_ci = total_cas_ww_summary$lower_95_CI,          # lower 95% CI
@@ -139,7 +142,8 @@ plot_datacas_ww <- data.frame(
 
 
 plot_datacas_wwb <- data.frame(
-  time = 1:nrow(ww_std),                    
+  time = 1:nrow(ww_std), 
+  Date=ww_dat$date,
   observed = ww_obs,                    # observed cases
   median_fit = total_cas_wwb_summary$median,          # model median fit
   lower_ci = total_cas_wwb_summary$lower_95_CI,          # lower 95% CI
@@ -167,7 +171,8 @@ plot_datcomcasb <- data.frame(
 )
 
 plot_datcomww <- data.frame(
-  time = 1:nrow(ww_std),                    
+  time = 1:nrow(ww_std), 
+  Date=ww_dat$date,
   observed = ww_obs,                    # observed cases
   median_fit = total_com_ww_summary$median,          # model median fit
   lower_ci = total_com_ww_summary$lower_95_CI,          # lower 95% CI
@@ -175,7 +180,8 @@ plot_datcomww <- data.frame(
 )
 
 plot_datcomwwb <- data.frame(
-  time = 1:nrow(ww_std),                    
+  time = 1:nrow(ww_std),  
+  Date=ww_dat$date,
   observed = ww_obs,                    # observed cases
   median_fit = total_com_ww_summaryb$median,          # model median fit
   lower_ci = total_com_ww_summaryb$lower_95_CI,          # lower 95% CI
@@ -200,123 +206,125 @@ plot_geom <- list(
 )
 
 # Cases – Case-only model
-plot_casefit <- ggplot(plot_datcas, aes(x = time)) +
+plot_casefit <- ggplot(plot_datcas, aes(x = Date)) +
   plot_geom +
   ylim(0, 20)+
+  #ylim(0, 9)+
   labs(
-    x = "Time", y = "Reported mpox cases",
-    title = "Fit vs. observed cases (Case-only model)"
+    x = "Date", y = "Fit vs. observed cases",
+    title = "(Case-only model)"
   ) +
   custom_theme
 
 # Cases – Case-only model
-plot_casefitb <- ggplot(plot_datcasb, aes(x = time)) +
+plot_casefitb <- ggplot(plot_datcasb, aes(x = Date)) +
   plot_geom +
   ylim(0, 11)+
+  #ylim(0, 9)+
   labs(
-    x = "Time", y = "Reported mpox cases",
-    title = "Fit vs. observed cases (Case-only model)"
+    x = "Date", y = "Fit vs. observed cases",
+    #title = "(Case-only model)"
   ) +
   custom_theme
 
 # Cases – ww-only model
-plot_casewwfit <- ggplot(plot_dataww_cases, aes(x = time)) +
+plot_casewwfit <- ggplot(plot_dataww_cases, aes(x = Date)) +
   plot_geom +
   ylim(0, 11)+
   labs(
-    x = "Time", y = "Reported mpox cases",
-    title = "Fit vs. observed cases (WW-only model)"
+    x = "Date", y = "Fit vs. observed cases",
+    #title = "(WW-only model)"
   ) +
   custom_theme
 
 # Cases – ww-only model
-plot_casewwfitb <- ggplot(plot_dataww_casesb, aes(x = time)) +
+plot_casewwfitb <- ggplot(plot_dataww_casesb, aes(x = Date)) +
   plot_geom +
   ylim(0, 20)+
   labs(
-    x = "Time", y = "Reported mpox cases",
-    title = "Fit vs. observed cases (WW-only model)"
+    x = "Date", y = "Fit vs. observed cases",
+    title = "(WW-only model)"
   ) +
   custom_theme
 
 
 # Viral load – WW-only model
-plot_wwfit <- ggplot(plot_dataww, aes(x = time)) +
+plot_wwfit <- ggplot(plot_dataww, aes(x = Date)) +
   plot_geom +
-  ylim(0, 15)+
+  ylim(0, 9)+
   labs(
-    x = "Time", y = "Reported viral load",
-    title = "Fit vs. observed viral load (WW-only model)"
+    x = "Date", y = "Fit vs. observed viral load",
+    title = "(WW-only model)"
   ) +
   custom_theme
 
-plot_wwfitb <- ggplot(plot_datawwb, aes(x = time)) +
+plot_wwfitb <- ggplot(plot_datawwb, aes(x = Date)) +
   plot_geom +
-  ylim(0, 17)+
+  ylim(0, 9)+
   labs(
-    x = "Time", y = "Reported viral load",
-    title = "Fit vs. observed viral load (WW-only model)"
+    x = "Date", y = "Fit vs. observed viral load",
+    title = "(WW-only model)"
   ) +
   custom_theme
 
 
 # Viral load – Case only model
-plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = time)) +
+plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = Date)) +
   plot_geom +
-  ylim(0, 17)+
+  ylim(0, 9)+
   labs(
-    x = "Time", y = "Reported viral load",
-    title = "Fit vs. observed viral load (Case-only model)"
+    x = "Date", y = "Fit vs. observed viral load",
+    title = "(Case-only model)"
   ) +
   custom_theme
 
-plot_wwcasefitb <- ggplot(plot_datacas_wwb, aes(x = time)) +
+plot_wwcasefitb <- ggplot(plot_datacas_wwb, aes(x = Date)) +
   plot_geom +
-  ylim(0, 17)+
+  ylim(0, 9)+
   labs(
-    x = "Time", y = "Reported viral load",
-    title = "Fit vs. observed viral load (Case-only model)"
+    x = "Date", y = "Fit vs. observed viral load",
+    title = "(Case-only model)"
   ) +
   custom_theme
 
 
 # Viral load – Combined model
-plot_comwwfit <- ggplot(plot_datcomww, aes(x = time)) +
+plot_comwwfit <- ggplot(plot_datcomww, aes(x = Date)) +
   plot_geom +
-  ylim(0, 17)+
+  ylim(0, 9)+
   labs(
-    x = "Time", y = "Reported viral load",
-    title = "Fit vs. observed viral load (Combined model)"
+    x = "Date", y = "Fit vs. observed viral load",
+    title = "(Combined model)"
   ) +
   custom_theme
 
-plot_comwwfitb <- ggplot(plot_datcomwwb, aes(x = time)) +
+plot_comwwfitb <- ggplot(plot_datcomwwb, aes(x = Date)) +
   plot_geom +
-  ylim(0, 17)+
+  ylim(0, 9)+
   labs(
-    x = "Time", y = "Reported viral load",
-    title = "Fit vs. observed viral load (Combined model)"
+    x = "Date", y = "Fit vs. observed viral load",
+    title = "(Combined model)"
   ) +
   custom_theme
 
 
 # Cases – Combined model
-plot_comcasefit <- ggplot(plot_datcomcas, aes(x = time)) +
+plot_comcasefit <- ggplot(plot_datcomcas, aes(x = Date)) +
   plot_geom +
-  ylim(0, 20)+
+  ylim(0,20)+
   labs(
-    x = "Time", y = "Reported mpox cases",
-    title = "Fit vs. observed cases (Combined model)"
+    x = "Date", y = "Fit vs. observed cases",
+    title = "(Combined model)"
   ) +
   custom_theme
 
 
-plot_comcasefitb <- ggplot(plot_datcomcasb, aes(x = time)) +
+plot_comcasefitb <- ggplot(plot_datcomcasb, aes(x = Date)) +
   plot_geom +
   ylim(0, 11)+
   labs(
-    x = "Time", y = "Reported mpox cases",
-    title = "Fit vs. observed cases (Combined model)"
+    x = "Date", y = "Fit vs. observed cases",
+    #title = "(Combined model)"
   ) +
   custom_theme
 
@@ -339,7 +347,14 @@ plot_casefit
 
 
 ZZ=(plot_casefit+plot_comcasefit+plot_casewwfitb)/(plot_casefitb+plot_comcasefitb+plot_casewwfit)
-ZZ
+ZZ+plot_layout(guides = "collect") & theme(legend.position = "bottom")
+
+mm=(plot_casefit+plot_comcasefit)/(plot_casefitb+plot_comcasefitb)
+mm
+
+vv=(plot_wwfit+plot_comwwfit)/(plot_wwfitb+plot_comwwfitb)
+vv
+
 
 yy=(plot_wwfit+plot_comwwfit+plot_wwcasefitb)/(plot_wwfitb+plot_comwwfitb+plot_wwcasefit)
 yy
@@ -347,7 +362,7 @@ yy
 ggsave(
   filename = "D:/Mpox25output/Figures/modfitb.tiff",
   plot = yy,  # use your actual plot variable here
-  width = 14,
+  width = 13,
   height = 7,
   dpi = 300,
   units = "in",
@@ -367,7 +382,8 @@ prev_comsummaryb <- prev_comsummary[(burn_in_timesteps + 1):nrow(prev_comsummary
 
 
 plot_wwprev <- data.frame(
-  time = 1:nrow(case_dat),                    # time index
+  time = 1:nrow(case_dat),
+  Date=case_dat$Date,# time index
   median_fit = prev_wwsummaryb$median,          # model median fit
   lower_ci = prev_wwsummaryb$lower_95_CI,          # lower 95% CI
   upper_ci = prev_wwsummaryb$upper_95_CI         # upper 95% CI
@@ -375,7 +391,8 @@ plot_wwprev <- data.frame(
 
 
 plot_casprev <- data.frame(
-  time = 1:nrow(case_dat),                    # time index
+  time = 1:nrow(case_dat), 
+  Date=case_dat$Date,# time index
   median_fit = prev_cassummaryb$median,          # model median fit
   lower_ci = prev_cassummaryb$lower_95_CI,          # lower 95% CI
   upper_ci = prev_cassummaryb$upper_95_CI         # upper 95% CI
@@ -383,7 +400,8 @@ plot_casprev <- data.frame(
 
 
 plot_comprev <- data.frame(
-  time = 1:nrow(case_dat),                    # time index
+  time = 1:nrow(case_dat), 
+  Date=case_dat$Date,# time index
   median_fit = prev_comsummaryb$median,          # model median fit
   lower_ci = prev_comsummaryb$lower_95_CI,          # lower 95% CI
   upper_ci = prev_comsummaryb$upper_95_CI         # upper 95% CI
@@ -399,20 +417,20 @@ plot_comprev$model <- "Combined"
 # Combine into one dataframe
 plot_allprev <- bind_rows(plot_wwprev, plot_casprev, plot_comprev)
 
-plot_prev_all <- ggplot(plot_allprev, aes(x = time, y = median_fit, color = model, fill = model)) +
+plot_prev_all <- ggplot(plot_allprev, aes(x = Date, y = median_fit, color = model, fill = model)) +
   geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, color = NA) +
   geom_line(size = 1.1) +
   labs(
-    x = "Time",
+    x = "Date",
     y = "Active prevalence",
-    title = "Model-predicted prevalence by model type"
+    #title = "Model-predicted prevalence by model type"
   ) +
   theme_minimal(base_size = 14) +
   scale_color_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
   scale_fill_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
   theme(
     legend.title = element_blank(),
-    legend.position = "top",
+    legend.position = "bottom",
     plot.title = element_text(face = "bold", hjust = 0.5))
 
 
@@ -432,7 +450,8 @@ Cuminc_comsummaryb <- Cuminc_comsummary[(burn_in_timesteps + 1):nrow(Cuminc_coms
 
 
 plot_wwCuminc <- data.frame(
-  time = 1:nrow(case_dat),                    # time index
+  time = 1:nrow(case_dat),
+  Date=case_dat$Date,# time index# time index
   median_fit = Cuminc_wwsummaryb$median,          # model median fit
   lower_ci = Cuminc_wwsummaryb$lower_95_CI,          # lower 95% CI
   upper_ci = Cuminc_wwsummaryb$upper_95_CI         # upper 95% CI
@@ -440,14 +459,16 @@ plot_wwCuminc <- data.frame(
 
 
 plot_casCuminc <- data.frame(
-  time = 1:nrow(case_dat),                    # time index
+  time = 1:nrow(case_dat), 
+  Date=case_dat$Date,# time index# time index
   median_fit = Cuminc_cassummaryb$median,          # model median fit
   lower_ci = Cuminc_cassummaryb$lower_95_CI,          # lower 95% CI
   upper_ci = Cuminc_cassummaryb$upper_95_CI         # upper 95% CI
 )
 
 plot_comCuminc <- data.frame(
-  time = 1:nrow(case_dat),                    # time index
+  time = 1:nrow(case_dat),
+  Date=case_dat$Date,# time index# time index
   median_fit = Cuminc_comsummaryb$median,          # model median fit
   lower_ci = Cuminc_comsummaryb$lower_95_CI,          # lower 95% CI
   upper_ci = Cuminc_comsummaryb$upper_95_CI         # upper 95% CI
@@ -463,25 +484,25 @@ plot_comCuminc$model <- "Combined"
 plot_allCuminc <- bind_rows(plot_wwCuminc, plot_casCuminc,plot_comCuminc)
 
 
-plot_Cuminc_all <- ggplot(plot_allCuminc, aes(x = time, y = median_fit, color = model, fill = model)) +
+plot_Cuminc_all <- ggplot(plot_allCuminc, aes(x = Date, y = median_fit, color = model, fill = model)) +
   geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, color = NA) +
   geom_line(size = 1.1) +
   labs(
-    x = "Time",
+    x = "Date",
     y = "Cumulative Incidence",
-    title = "Model-predicted cumulative incidence by model type"
+    #title = "Model-predicted cumulative incidence by model type"
   ) +
   theme_minimal(base_size = 14) +
   scale_color_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
   scale_fill_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
   theme(
     legend.title = element_blank(),
-    legend.position = "top",
+    legend.position = "bottom",
     plot.title = element_text(face = "bold", hjust = 0.5))
 
 
 
-y=plot_prev_all+plot_Cuminc_all
+y=plot_prev_all+plot_Cuminc_all+plot_layout(guides = "collect") & theme(legend.position = "bottom")
 
 
 ggsave(
@@ -517,8 +538,6 @@ shedI_2 <- as.matrix(Comblist_finalg[, grep("shed_I\\[2,", varnames(Comblist_fin
 shedI_3 <- as.matrix(Comblist_finalg[, grep("shed_I\\[3,", varnames(Comblist_finalg))])
 
 
-
-
 # Total shedding for each group (denominator)
 
 shed1_total <- shedP_1 + shedA_1 + shedI_1
@@ -536,6 +555,7 @@ relg_3 <- shed3_total / shedall_total
 summary_rel_group <- function(mat, group_label) {
   data.frame(
     time = 1:ncol(mat),
+    Date=case_dat$Date,# time index
     median = apply(mat, 2, median, na.rm = TRUE),
     lower = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
     upper = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
@@ -543,20 +563,27 @@ summary_rel_group <- function(mat, group_label) {
   )
 }
 
+burn_in <- 30
+
+# Remove first 30 timesteps from each matrix
+relg_1_burned <- relg_1[, (burn_in):ncol(relg_1)]
+relg_2_burned <- relg_2[, (burn_in):ncol(relg_2)]
+relg_3_burned <- relg_3[, (burn_in):ncol(relg_3)]
+
 # Combine summaries for plotting
 relg_all <- dplyr::bind_rows(
-  summary_rel_group(relg_1, "Group 1 (low activity)"),
-  summary_rel_group(relg_2, "Group 2 (medium activity)"),
-  summary_rel_group(relg_3, "Group 3 (high activity)")
+  summary_rel_group(relg_1_burned, "Group 1 (low activity)"),
+  summary_rel_group(relg_2_burned, "Group 2 (medium activity)"),
+  summary_rel_group(relg_3_burned, "Group 3 (high activity)")
 )
 
+#relg_all=relg_all %>% mutate(Date=case_dat$Date)
 
-
-plotshed=ggplot(relg_all, aes(x = time, y = median, fill = group, color = group)) +
+plotshed=ggplot(relg_all, aes(x = Date, y = median, fill = group, color = group)) +
   geom_line(size = 1) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, linetype = 0) +
   labs(
-    title = "Relative contribution to shedding by sexual activity group",
+    #title = "Relative contribution to shedding by sexual activity group",
     x = "Time",
     y = "Proportion of viral load shed"
   ) +
@@ -564,7 +591,7 @@ plotshed=ggplot(relg_all, aes(x = time, y = median, fill = group, color = group)
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   theme(legend.position = "bottom")
 
-
+plotshed
 
 ###########We now do the same for the total number of infected individuals
 # Example extraction for each group across time (adapt to your variable names)
@@ -586,10 +613,19 @@ infected_1 <- P1_total + A1_total + I1_total
 infected_2 <- P2_total + A2_total + I2_total
 infected_3 <- P3_total + A3_total + I3_total
 
+
+burn_in <- 30  # Number of initial time steps to exclude
+
+# Remove burn-in columns
+infected_1_burned <- infected_1[, (burn_in):ncol(infected_1)]
+infected_2_burned <- infected_2[, (burn_in):ncol(infected_2)]
+infected_3_burned <- infected_3[, (burn_in):ncol(infected_3)]
+
 # Summary function for CrI and median over time
 summarise_draws <- function(mat, group_label) {
   data.frame(
     time = 1:ncol(mat),
+    Date=case_dat$Date,# time index
     median = apply(mat, 2, median),
     lower = apply(mat, 2, quantile, probs = 0.025),
     upper = apply(mat, 2, quantile, probs = 0.975),
@@ -597,41 +633,43 @@ summarise_draws <- function(mat, group_label) {
   )
 }
 
-# Apply summarization
+
+# Apply summarization AFTER trimming
 infected_df <- bind_rows(
-  summarise_draws(infected_1, "Group 1 (low activity)"),
-  summarise_draws(infected_2, "Group 2 (medium activity)"),
-  summarise_draws(infected_3, "Group 3 (high activity)")
+  summarise_draws(infected_1_burned, "Group 1 (low activity)"),
+  summarise_draws(infected_2_burned, "Group 2 (medium activity)"),
+  summarise_draws(infected_3_burned, "Group 3 (high activity)")
 )
+
 
 # Plotting
 # Plot 1: Relative contribution to viral shedding
-plot_shed <- ggplot(relg_all, aes(x = time, y = median, fill = group, color = group)) +
+plot_shed <- ggplot(relg_all, aes(x = Date, y = median, fill = group, color = group)) +
   geom_line(size = 1.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
   labs(
-    title = "Relative contribution to viral shedding by sexual activity group",
-    x = "Time (days)",
+    #title = "Relative contribution to viral shedding by sexual activity group",
+    x = "Date",
     y = "Proportion of total viral load"
   ) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   scale_color_manual(values = c("#e41a1c", "#4daf4a", "#377eb8")) +
   scale_fill_manual(values = c("#e41a1c", "#4daf4a", "#377eb8")) +
-  theme_minimal(base_size = 11) +
+  theme_minimal(base_size = 13) +
   theme(legend.position = "bottom")
 
 # Plot 2: Number of infectious individuals by group
-plot_epi <- ggplot(infected_df, aes(x = time, y = median, color = group, fill = group)) +
+plot_epi <- ggplot(infected_df, aes(x = Date, y = median, color = group, fill = group)) +
   geom_line(size = 1.1) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
   labs(
-    title = "Number of infectious individuals by sexual activity group",
-    x = "Time (days)",
+    #title = "Number of infectious individuals by sexual activity group",
+    x = "Date",
     y = "Number of infectious individuals"
   ) +
   scale_color_manual(values = c("#e41a1c", "#4daf4a", "#377eb8")) +
   scale_fill_manual(values = c("#e41a1c", "#4daf4a", "#377eb8")) +
-  theme_minimal(base_size = 11) +
+  theme_minimal(base_size = 13) +
   theme(legend.position = "bottom")
 
 # Combine plots with shared legend
@@ -844,6 +882,67 @@ ggsave(
   device = "tiff",
   compression = "lzw"
 )
+
+
+##############model input data###############
+##1. case data ################
+case_dat=read_excel("Data/case_data_V2.xlsx",sheet="cases")
+cases_obsb = case_dat %>% select(Date,total_cases)
+#Cumulat_inc=case_dat$Cumulat_Inc
+
+##2. WW data #########################
+ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
+ww_std = ww_dat %>% select(date,log10_cp_per_person_per_day) %>% rename(Date=date)
+
+
+
+
+# Merge the two with full_join
+merged_df <- full_join(cases_obsb, ww_std, by = c("Date"))
+
+# Reshape to long format
+df_long <- merged_df %>%
+  pivot_longer(cols = c(total_cases, log10_cp_per_person_per_day), names_to = "type", values_to = "value") %>%
+  filter(!is.na(value)) %>%
+  group_by(type) %>%
+  mutate(value_norm = (value - min(value, na.rm = TRUE)) / (max(value, na.rm = TRUE) - min(value, na.rm = TRUE))) %>%
+  ungroup()
+
+# Label for legend
+df_long$type <- factor(df_long$type, 
+                       levels = c("total_cases", "log10_cp_per_person_per_day"),
+                       labels = c("Case report", "Wastewater concentration"))
+
+
+
+custom_theme <- theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.title = element_text(size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+Plot=ggplot(df_long, aes(x = Date, y = value_norm, color = type)) +
+  geom_line(size = 0.2) +
+  scale_color_manual(values = c("brown", "steelblue")) +
+  labs(x = "Date", y = "Normalized value", color = "Data type") +
+  custom_theme
+
+Plot
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-#rm(list=ls())
+rm(list=ls())
 library(coda)
 library(readxl)
 library(tidyverse)
@@ -111,9 +111,28 @@ mysimulate_model <- function(params, init, contact, N, T, vax_scenario = "baseli
   mu_v <- rep(0, T)
   
   if (vax_scenario == "baseline") {
-    alpha_v <- init$alpha_v
-    mu_v <- init$mu_v
-  } else if (vax_scenario == "no_vax") {
+         alpha_v <- init$alpha_v
+         mu_v <- init$mu_v
+    
+      # Force vaccinated compartments to shed like unvaccinated
+      params$shed_P1a <- params$shed_alpha
+      params$shed_P1b <- params$shed_alpha
+      
+      params$shed_I1a <- params$shed_I1
+      params$shed_I2a <- params$shed_I2
+      params$shed_I3a <- params$shed_I3
+      params$shed_I1b <- params$shed_I1
+      params$shed_I2b <- params$shed_I2
+      params$shed_I3b <- params$shed_I3
+      
+      params$shed_A1a <- params$shed_A1
+      params$shed_A2a <- params$shed_A2
+      params$shed_A3a <- params$shed_A3
+      params$shed_A1b <- params$shed_A1
+      params$shed_A2b <- params$shed_A2
+      params$shed_A3b <- params$shed_A3
+      } 
+  else if (vax_scenario == "no_vax") {
     alpha_v <- rep(0, T)
     mu_v <- rep(0, T)
     params$rsa <- 1
@@ -481,25 +500,47 @@ mysimulate_model <- function(params, init, contact, N, T, vax_scenario = "baseli
     #     shed_I1b * I1vb[g, t] + shed_I2b * I2vb[g, t] + shed_I3b * I3vb[g, t]
     # }
     
+    # for (g in 1:3) {
+    #   
+    #   # 1. Shedding from P compartments (pre-symptomatic)
+    #   shed_P[g, t] <- params$shed_alpha * P[g, t] +
+    #       params$shed_P1a*Pva[g, t] +
+    #     params$shed_P1b*Pvb[g, t]
+    #   
+    #   # 2. Shedding from A compartments (asymptomatic)
+    #   shed_A[g, t] <-
+    #     params$shed_A1 * A1[g, t] + params$shed_A2 * A2[g, t] + params$shed_A3 * A3[g, t] +
+    #     params$shed_A1a * A1va[g, t] + params$shed_A2a * A2va[g, t] + params$shed_A3a * A3va[g, t] +
+    #     params$shed_A1b * A1vb[g, t] + params$shed_A2b * A2vb[g, t] + params$shed_A3b * A3vb[g, t]
+    #   
+    #   # 3. Shedding from I compartments (symptomatic)
+    #   shed_I[g, t] <-
+    #     params$shed_I1 * I1[g, t] + params$shed_I2 * I2[g, t] + params$shed_I3 * I3[g, t] +
+    #     params$shed_I1a * I1va[g, t] + params$shed_I2a * I2va[g, t] + params$shed_I3a * I3va[g, t] +
+    #     params$shed_I1b * I1vb[g, t] + params$shed_I2b * I2vb[g, t] + params$shed_I3b * I3vb[g, t]
+    # }
+    # 
+    
     for (g in 1:3) {
+      # Shedding from P compartments (pre-symptomatic)
+      shed_P[g, t] <- 
+        params$shed_alpha * P[g, t] +
+        params$shed_P1a * Pva[g, t] +
+        params$shed_P1b * Pvb[g, t]
       
-      # 1. Shedding from P compartments (pre-symptomatic)
-      shed_P[g, t] <- params$shed_alpha * P[g, t] +
-          params$shed_P1a*Pva[g, t] +
-        params$shed_P1b*Pvb[g, t]
-      
-      # 2. Shedding from A compartments (asymptomatic)
-      shed_A[g, t] <-
+      # Shedding from A compartments (asymptomatic)
+      shed_A[g, t] <- 
         params$shed_A1 * A1[g, t] + params$shed_A2 * A2[g, t] + params$shed_A3 * A3[g, t] +
         params$shed_A1a * A1va[g, t] + params$shed_A2a * A2va[g, t] + params$shed_A3a * A3va[g, t] +
         params$shed_A1b * A1vb[g, t] + params$shed_A2b * A2vb[g, t] + params$shed_A3b * A3vb[g, t]
       
-      # 3. Shedding from I compartments (symptomatic)
-      shed_I[g, t] <-
+      # Shedding from I compartments (symptomatic)
+      shed_I[g, t] <- 
         params$shed_I1 * I1[g, t] + params$shed_I2 * I2[g, t] + params$shed_I3 * I3[g, t] +
         params$shed_I1a * I1va[g, t] + params$shed_I2a * I2va[g, t] + params$shed_I3a * I3va[g, t] +
         params$shed_I1b * I1vb[g, t] + params$shed_I2b * I2vb[g, t] + params$shed_I3b * I3vb[g, t]
     }
+    
     
     # Total shedding across all groups (optional, if still needed)
     daily_shedding[t] <- sum(shed_P[1:3, t]) + sum(shed_A[1:3, t]) + sum(shed_I[1:3, t])
@@ -692,15 +733,10 @@ sim_baseline
 
 ##############Now we sample multiple posterior draws
 set.seed(123)  # for reproducibility
-n_draws <-40000     ##5000
+n_draws <-200     ##5000
 G <- 3   #number of groups
 T <- 199  #timepoints
 draw_indices <- sample(1:nrow(mcmc_matrixallcom), size = n_draws, replace = FALSE)
-
-
-
-n_draws <- nrow(mcmc_matrixallcom)  # ensures you're always using the full posterior
-draw_indices <- seq_len(n_draws)
 
 ############Initialize lists to hold draws for no vax########
 cases_novax <- matrix(NA, nrow = n_draws, ncol = T)
@@ -794,32 +830,82 @@ for (i in seq_along(draw_indices)) {
   I_total_baseline[i, , ] <- sim_rbaseline$I_total
 }
 
+all_sim_resultsb <- list(
+  baseline = list(
+    cases = cases_baseline,
+    vload = vload_baseline,
+    cuminc = cuminc_baseline,
+    prev = prev_baseline,
+    FOI = FOI_baseline,
+    shed_P = shed_P_baseline,
+    shed_A = shed_A_baseline,
+    shed_I = shed_I_baseline,
+    P_total = P_total_baseline,
+    A_total = A_total_baseline,
+    I_total = I_total_baseline
+  ),
+  no_vax = list(
+    cases = cases_novax,
+    vload = vload_novax,
+    cuminc = cuminc_novax,
+    prev = prev_novax,
+    FOI = FOI_novax,
+    shed_P = shed_P_novax,
+    shed_A = shed_A_novax,
+    shed_I = shed_I_novax,
+    P_total = P_total_novax,
+    A_total = A_total_novax,
+    I_total = I_total_novax
+  ),
+  reduced_shedding = list(
+    cases = cases_reducedshed,
+    vload = vload_reducedshed,
+    cuminc = cuminc_reducedshed,
+    prev = prev_reducedshed,
+    FOI = FOI_reducedshed,
+    shed_P = shed_P_reducedshed,
+    shed_A = shed_A_reducedshed,
+    shed_I = shed_I_reducedshed,
+    P_total = P_total_reducedshed,
+    A_total = A_total_reducedshed,
+    I_total = I_total_reducedshed
+  )
+)
+
+saveRDS(all_sim_resultsb$baseline, "D:/Mpoxoutputb/baseline_resultsb.rds")
+saveRDS(all_sim_resultsb$no_vax, "D:/Mpoxoutputb/novax_resultsb.rds")
+saveRDS(all_sim_resultsb$reduced_shedding, "D:/Mpoxoutputb/reducedshed_resultsb.rds")
+
+
+baseline <- readRDS("D:/Mpoxoutputb/baseline_resultsb.rds")
+novax <- readRDS("D:/Mpoxoutputb/novax_resultsb.rds")
+reducedshed <- readRDS("D:/Mpoxoutputb/reducedshed_resultsb.rds")
+
 ##########we now compute credible intervals############
 summary_quantiles <- function(mat) {
   apply(mat, 2, function(x) quantile(x, probs = c(0.025, 0.5, 0.975), na.rm = TRUE))
 }
 
 # Summarize both scenarios
-cases_summary_novax <- summary_quantiles(cases_novax)
-cases_summary_reduced <- summary_quantiles(cases_reducedshed)
-cases_summary_baseline <- summary_quantiles(cases_baseline)
+cases_summary_novax        <- summary_quantiles(novax$cases)
+cases_summary_reduced      <- summary_quantiles(reducedshed$cases)
+cases_summary_baseline     <- summary_quantiles(baseline$cases)
 
-vload_summary_novax <- summary_quantiles(vload_novax)
-vload_summary_reduced <- summary_quantiles(vload_reducedshed)
-vload_summary_baseline <- summary_quantiles(vload_baseline)
+vload_summary_novax        <- summary_quantiles(novax$vload)
+vload_summary_reduced      <- summary_quantiles(reducedshed$vload)
+vload_summary_baseline     <- summary_quantiles(baseline$vload)
 
-cuminc_summary_novax <- summary_quantiles(cuminc_novax)
-cuminc_summary_reduced <- summary_quantiles(cuminc_reducedshed)
-cuminc_summary_baseline <- summary_quantiles(cuminc_baseline)
+cuminc_summary_novax       <- summary_quantiles(novax$cuminc)
+cuminc_summary_reduced     <- summary_quantiles(reducedshed$cuminc)
+cuminc_summary_baseline    <- summary_quantiles(baseline$cuminc)
 
-prev_summary_novax <- summary_quantiles(prev_novax)
-prev_summary_reduced <- summary_quantiles(prev_reducedshed)
-prev_summary_baseline <- summary_quantiles(prev_baseline)
+prev_summary_novax         <- summary_quantiles(novax$prev)
+prev_summary_reduced       <- summary_quantiles(reducedshed$prev)
+prev_summary_baseline      <- summary_quantiles(baseline$prev)
 
-
-FOI_summary_novax <- summary_quantiles(FOI_novax)
-FOI_summary_reduced <- summary_quantiles(FOI_reducedshed)
-FOI_summary_baseline <- summary_quantiles(FOI_baseline)
+FOI_summary_novax          <- summary_quantiles(novax$FOI)
+FOI_summary_reduced        <- summary_quantiles(reducedshed$FOI)
+FOI_summary_baseline       <- summary_quantiles(baseline$FOI)
 
 ### Example: plot-ready df for cases
 make_plot_df <- function(summary_matrix, burn_in_timesteps, T, scenario_label) {
@@ -835,6 +921,19 @@ make_plot_df <- function(summary_matrix, burn_in_timesteps, T, scenario_label) {
   return(df)
 }
 
+match_to_observed_days <- function(pred_matrix, sample_days) {
+  # pred_matrix: [iterations × total_days], e.g. output of your JAGS model
+  # sample_days: vector of day indices with observed WW (e.g., c(3, 5, 9, 14, ...))
+  
+  # Check that all sample days are within bounds
+  if (any(sample_days > ncol(pred_matrix))) {
+    stop("Some sampling days exceed number of model timepoints.")
+  }
+  
+  matched_matrix <- pred_matrix[, sample_days, drop = FALSE]
+  return(matched_matrix)  # [iterations × number_of_observations]
+}
+
 make_sampled_vload_df <- function(summary_matrix, obs_days, scenario_label) {
   sampled_matrix <- match_to_observed_days(summary_matrix, obs_days)
   
@@ -848,7 +947,6 @@ make_sampled_vload_df <- function(summary_matrix, obs_days, scenario_label) {
   
   return(df)
 }
-
 
 cases_df_novax <- make_plot_df(cases_summary_novax, burn_in_timesteps, T, "No vaccination")
 cases_df_reduced <- make_plot_df(cases_summary_reduced, burn_in_timesteps, T, "Reduced shedding")
@@ -898,7 +996,7 @@ plot_sim_output <- function(data, ylab, title, log_y = FALSE) {
     ) +
     theme_minimal(base_size = 14) +
     theme(
-      legend.position = "top",
+      legend.position = "bottom",
       plot.title = element_text(face = "bold", hjust = 0.5)
     ) +
     scale_y_continuous(trans = if (log_y) "log10" else "identity")
@@ -910,35 +1008,40 @@ p_prev <- plot_sim_output(plot_prev_df, ylab = "Prevalence", title = "Simulated 
 p_cuminc <- plot_sim_output(plot_cuminc_df, ylab = "Cumulative incidence", title = "Simulated Cumulative Incidence")
 
 
+bb=p_cases+p_vload_sampled+plot_layout(guides = "collect") & theme(legend.position = "bottom")
+bb
+
+ggsave(
+  filename = "D:/Mpox25output/Figures/plotrel.tiff",
+  plot = plotrel,  # use your actual plot variable here
+  width = 9,
+  height = 6,
+  dpi = 300,
+  units = "in",
+  device = "tiff",
+  compression = "lzw"
+)
+
+
+
+
 #########Contribution to viral load by sexual activity group#########
 # Total shedding per group: sum P, A, I
-summarise_relative_shedding_array <- function(shed_P, shed_A, shed_I, scenario_name = "Scenario", burn_in = 30) {
-  # Total shedding per group: [draw, group, time]
-  shed_total_all <- shed_P + shed_A + shed_I
+summarise_relative_shedding_array <- function(shed_P, shed_A, shed_I, scenario_name = "Scenario") {
+  # Total shedding per group [draw, group, time]
+  shed_total <- shed_P + shed_A + shed_I
   
-  # Subset after burn-in
-  shed_total <- shed_total_all[, , (burn_in + 1):dim(shed_total_all)[3]]
+  # Total shedding across groups [draw, time]
+  shed_all <- apply(shed_total, c(1, 3), sum, na.rm = TRUE)
   
-  n_draws <- dim(shed_total)[1]
-  n_groups <- dim(shed_total)[2]
-  n_time <- dim(shed_total)[3]
+  # Relative shedding: [draw, group, time]
+  rel_shed <- sweep(shed_total, c(1, 3), shed_all, "/")
+  rel_shed[is.na(rel_shed)] <- 0
   
-  # Total shedding across groups at each [draw, time]
-  shed_all <- apply(shed_total, c(1, 3), sum, na.rm = TRUE)  # [draw, time]
+  # Add time labels before melting
+  dimnames(rel_shed)[[3]] <- as.character(1:dim(rel_shed)[3])
   
-  # Relative contributions
-  rel_shed <- array(NA, dim = dim(shed_total))  # [draw, group, time]
-  
-  for (g in 1:n_groups) {
-    for (t in 1:n_time) {
-      for (i in 1:n_draws) {
-        denom <- shed_all[i, t]
-        rel_shed[i, g, t] <- if (!is.na(denom) && denom > 0) shed_total[i, g, t] / denom else 0
-      }
-    }
-  }
-  
-  # Reshape for summarising
+  # Reshape to long format
   rel_df <- as.data.frame.table(rel_shed, responseName = "prop") %>%
     dplyr::rename(draw = Var1, group = Var2, time = Var3) %>%
     dplyr::mutate(
@@ -947,11 +1050,11 @@ summarise_relative_shedding_array <- function(shed_P, shed_A, shed_I, scenario_n
                      labels = c("Group 1 (low activity)",
                                 "Group 2 (medium activity)",
                                 "Group 3 (high activity)")),
-      time = as.integer(time),  # <- no burn-in offset
+      time = as.integer(time),
       scenario = scenario_name
     )
   
-  # Summarise
+  # Summarize across draws
   summary_df <- rel_df %>%
     dplyr::group_by(time, group, scenario) %>%
     dplyr::summarise(
@@ -964,9 +1067,18 @@ summarise_relative_shedding_array <- function(shed_P, shed_A, shed_I, scenario_n
   return(summary_df)
 }
 
-baseline_df <- summarise_relative_shedding_array(shed_P_baseline, shed_A_baseline, shed_I_baseline, "Baseline")
-novax_df    <- summarise_relative_shedding_array(shed_P_novax, shed_A_novax, shed_I_novax, "No vaccination")
-shedred_df  <- summarise_relative_shedding_array(shed_P_reducedshed, shed_A_reducedshed, shed_I_reducedshed, "Reduced shedding")
+# Summarize relative shedding contributions by compartment for each scenario
+baseline_df <- summarise_relative_shedding_array(
+  baseline$shed_P, baseline$shed_A, baseline$shed_I, "Baseline"
+)
+
+novax_df <- summarise_relative_shedding_array(
+  novax$shed_P, novax$shed_A, novax$shed_I, "No vaccination"
+)
+
+shedred_df <- summarise_relative_shedding_array(
+  reducedshed$shed_P, reducedshed$shed_A, reducedshed$shed_I, "Reduced shedding"
+)
 
 relg_all <- dplyr::bind_rows(baseline_df, novax_df, shedred_df)
 
@@ -1000,6 +1112,99 @@ plot_shedding_contributions <- function(shed_summary_df) {
 # Plot
 shedplot=plot_shedding_contributions(relg_all)
 
+
+shedP_1 <- shed_P_baseline[, 1, ]
+shedP_2 <- shed_P_baseline[, 2, ]
+shedP_3 <- shed_P_baseline[, 3, ]
+
+
+# Extract matrices for each group
+shedP_1 <- shed_P_baseline[, 1, ]
+shedP_2 <- shed_P_baseline[, 2, ]
+shedP_3 <- shed_P_baseline[, 3, ]
+
+shedA_1 <- shed_A_baseline[, 1, ]
+shedA_2 <- shed_A_baseline[, 2, ]
+shedA_3 <- shed_A_baseline[, 3, ]
+
+shedI_1 <- shed_I_baseline[, 1, ]
+shedI_2 <- shed_I_baseline[, 2, ]
+shedI_3 <- shed_I_baseline[, 3, ]
+
+
+# Total shedding for each group (denominator)
+
+shed1_total <- shedP_1 + shedA_1 + shedI_1
+shed2_total <- shedP_2 + shedA_2 + shedI_2
+shed3_total <- shedP_3 + shedA_3 + shedI_3
+shedall_total <- shed1_total + shed2_total + shed3_total
+
+
+# Relative contribution of each group
+relg_1 <- shed1_total / shedall_total
+relg_2 <- shed2_total/ shedall_total
+relg_3 <- shed3_total / shedall_total
+
+# Function to summarize posterior samples over time
+summary_rel_group <- function(mat, group_label) {
+  data.frame(
+    time = 1:ncol(mat),
+    median = apply(mat, 2, median, na.rm = TRUE),
+    lower = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
+    upper = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
+    group = group_label
+  )
+}
+
+# Combine summaries for plotting
+relg_all <- dplyr::bind_rows(
+  summary_rel_group(relg_1, "Group 1 (low activity)"),
+  summary_rel_group(relg_2, "Group 2 (medium activity)"),
+  summary_rel_group(relg_3, "Group 3 (high activity)")
+)
+
+
+plotshed=ggplot(relg_all, aes(x = time, y = median, fill = group, color = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, linetype = 0) +
+  labs(
+    title = "Relative contribution to shedding by sexual activity group",
+    x = "Time",
+    y = "Proportion of viral load shed"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme(legend.position = "bottom")
+
+plotshed
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###########Number of infectious people per group#############
 # Function to summarize total infectious individuals per group
 summarise_total_infectious <- function(P_total, A_total, I_total, burn_in = 30) {
@@ -1027,14 +1232,21 @@ summarise_total_infectious <- function(P_total, A_total, I_total, burn_in = 30) 
 }
 
 
-infect_summary_baseline <- summarise_total_infectious(P_total_baseline, A_total_baseline, I_total_baseline) %>%
-  mutate(scenario = "Baseline")
+infect_summary_baseline <- summarise_total_infectious(
+  baseline$P_total, baseline$A_total, baseline$I_total
+) %>%
+  dplyr::mutate(scenario = "Baseline")
 
-infect_summary_novax <- summarise_total_infectious(P_total_novax, A_total_novax, I_total_novax) %>%
-  mutate(scenario = "No vaccination")
+infect_summary_novax <- summarise_total_infectious(
+  novax$P_total, novax$A_total, novax$I_total
+) %>%
+  dplyr::mutate(scenario = "No vaccination")
 
-infect_summary_reduced <- summarise_total_infectious(P_total_reducedshed, A_total_reducedshed, I_total_reducedshed) %>%
-  mutate(scenario = "Reduced shedding")
+infect_summary_reduced <- summarise_total_infectious(
+  reducedshed$P_total, reducedshed$A_total, reducedshed$I_total
+) %>%
+  dplyr::mutate(scenario = "Reduced shedding")
+
 
 # Combine all
 infect_all <- bind_rows(infect_summary_baseline, infect_summary_novax, infect_summary_reduced)
@@ -1136,20 +1348,41 @@ summarise_infected <- function(P_mat, A_mat, I_mat, scenario_label, burn_in = 30
 
 
 
-# Example for baseline
-rel_shedding_baseline <- summarise_rel_shedding(shed_P_baseline, shed_A_baseline, shed_I_baseline, "Baseline")
-infected_baseline <- summarise_infected(P_total_baseline, A_total_baseline, I_total_baseline, "Baseline")
+# Relative shedding by clinical compartment
+rel_shedding_baseline <- summarise_rel_shedding(
+  baseline$shed_P, baseline$shed_A, baseline$shed_I, "Baseline"
+)
 
-# Repeat for other scenarios
-rel_shedding_novax <- summarise_rel_shedding(shed_P_novax, shed_A_novax, shed_I_novax, "No vaccination")
-infected_novax <- summarise_infected(P_total_novax, A_total_novax, I_total_novax, "No vaccination")
+rel_shedding_novax <- summarise_rel_shedding(
+  novax$shed_P, novax$shed_A, novax$shed_I, "No vaccination"
+)
 
-rel_shedding_reduced <- summarise_rel_shedding(shed_P_reducedshed, shed_A_reducedshed, shed_I_reducedshed, "Reduced shedding")
-infected_reduced <- summarise_infected(P_total_reducedshed, A_total_reducedshed, I_total_reducedshed, "Reduced shedding")
+rel_shedding_reduced <- summarise_rel_shedding(
+  reducedshed$shed_P, reducedshed$shed_A, reducedshed$shed_I, "Reduced shedding"
+)
 
-# Combine all
-rel_shedding_all <- bind_rows(rel_shedding_baseline, rel_shedding_novax, rel_shedding_reduced)
-infected_all <- bind_rows(infected_baseline, infected_novax, infected_reduced)
+# Total number of infected individuals by clinical compartment
+infected_baseline <- summarise_infected(
+  baseline$P_total, baseline$A_total, baseline$I_total, "Baseline"
+)
+
+infected_novax <- summarise_infected(
+  novax$P_total, novax$A_total, novax$I_total, "No vaccination"
+)
+
+infected_reduced <- summarise_infected(
+  reducedshed$P_total, reducedshed$A_total, reducedshed$I_total, "Reduced shedding"
+)
+
+# Combine all scenarios
+rel_shedding_all <- dplyr::bind_rows(
+  rel_shedding_baseline, rel_shedding_novax, rel_shedding_reduced
+)
+
+infected_all <- dplyr::bind_rows(
+  infected_baseline, infected_novax, infected_reduced
+)
+
 
 # Infection stages
 ggplot(infected_all, aes(x = time, y = median, fill = group, color = group)) +
