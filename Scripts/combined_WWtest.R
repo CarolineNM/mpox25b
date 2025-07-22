@@ -734,6 +734,9 @@ system.time({
 Comb_WWtest<- as.mcmc.list(Combined_WWtest)
 save(Comb_WWtest,file="U:/mpox25output/Comb_WWtest.RData")
 
+###load data#############
+
+load(file="U:/mpox25output/Comb_WWtest.RData")
 ###generate traceplots
 traceplot(Comb_WWtest[, "transit_time_mean"],main="Mean transit time in sewer")
 traceplot(Comb_WWtest[, "mult"],main="Scaling factor of viral load")

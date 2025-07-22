@@ -596,8 +596,9 @@ alpha_log=shed.I1*tau
 ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
 names(ww_dat)
 ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW data
-#ww_stdlinear = ww_dat %>% select(cp_per_person_per_day) #####standardised WW data
-#ww_raw = ww_dat %>% select(log10_daily_avg_cp_ml) #####unstandardised WW data
+ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
+
+
 flow_L_daily=ww_dat %>% select(agg_flow_dat) ###aggregated flow data
 flow_L_daily <- as.numeric(unlist(flow_L_daily))
 is.numeric(flow_L_daily)
@@ -756,16 +757,10 @@ traceplot(Combined_castest[, "phi"],main="Negative binomial dispersion parmeter"
 traceplot(Combined_castest[, "report_frac"],main="reporting fraction")
 traceplot(Combined_castest[, "m"],main="Proportion of Asymptomatic fraction")
 
-#####extract samples for plotting
-chain_1_samples <- Comblist_mod7[[1]]
-mcmc_matrixall<-as.matrix(Comblist_mod7)
-###randomly sample the list to generate summaries of predicted data
-mcmc_matrix<-as.matrix(chain_1_samples)
-total_samples <- nrow(mcmc_matrix)
-# Randomly sample 1000 indices from the total number of samples
-sample_indices <- sample(1:total_samples, size = 9000, replace = FALSE)
-# Extract the sampled rows from the mcmc_matrix
-sampled_mcmc <- mcmc_matrix[sample_indices, ]
+
+############generate outputs
+######generate the model fit
+mcmc_matrixallcas<-as.matrix(Combined_castest) ###most recent version
 
 # Function to compute the median and 95% credible interval
 summary_median_CI <- function(samples) {
@@ -776,166 +771,129 @@ summary_median_CI <- function(samples) {
   return(summary_table)
 }
 
-# Summarize the posterior distributions for all parameters
-#posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
-posterior_summaryb <- summary_median_CI(mcmc_matrixall)
-posterior_summaryb[grep("mult|tau_ww|transit_time_mean|transit_time_cv", rownames(posterior_summaryb)), ]
-
-# If you want to focus on specific parameters, e.g., total_new_cases and new_I3_cases:
-total_new_WW_summary <- as.data.frame(posterior_summaryb[grep("ww_pred", rownames(posterior_summaryb)), ])
-total_delayed_summary <- as.data.frame(posterior_summaryb[grep("delayed_conc", rownames(posterior_summaryb)), ])
-
-#total_new_case_summary <- as.data.frame(posterior_summary[grep("cases_pred", rownames(posterior_summary)), ])
-#prev_summary <- as.data.frame(posterior_summaryb[grep("active_infected", rownames(posterior_summaryb)), ])
-#CumInc_summary <- as.data.frame(posterior_summaryb[grep("total_Cuminc", rownames(posterior_summaryb)), ])
-
-###read in the observed WW data
-ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
-#names(ww_dat)
-ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW data
-ww_stdlinear = ww_dat %>% select(cp_per_person_per_day) #####standardised WW data
-ww_raw = ww_dat %>% select(log10_daily_avg_cp_ml) #####unstandardised WW data
-ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
-#ww_obs = as.numeric(unlist(ww_stdlinear$cp_per_person_per_day))
-###read in the observed case data
-#total_new_cases_summaryb<-total_new_cases_summary %>% mutate(Day=1:169)
-# case_dat=read_excel("Data/case_data_V2.xlsx",sheet="cases")
-# cases_obsb = case_dat %>% select(total_cases)
-# 
-# ##########Generate case data fir
-# ##Create a data frame for plotting
-# plot_casedat <- data.frame(
-#   time = 1:nrow(cases_obsb),                    # time index
-#   Date=case_dat$Date,
-#   observed = cases_obsb$total_cases,                    # observed cases
-#   median_fit = total_new_case_summary$median,          # model median fit
-#   lower_ci = total_new_case_summary$lower_95_CI,          # lower 95% CI
-#   upper_ci = total_new_case_summary$upper_95_CI           # upper 95% CI
-# )
-# 
-# # Plot the observed cases and model fit with 95% CI
-# plot_casefit=ggplot(plot_casedat, aes(x = time)) +
-#   geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
-#   geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
-#   geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
-#   labs(x = "Time", y = "Reported Mpox cases", title = "fit vs. Observed Cases") +
-#   theme_minimal() +
-#   theme(legend.position = "top")
-# 
-# plot_casefit
-
-##Create a data frame for plotting
-plot_wwdata <- data.frame(
-  time = 1:nrow(ww_std),                    # time index
-  #Time=case_dat$Date,
-  observed = ww_obs,                    # observed cases
-  median_fit = total_new_WW_summary$median,          # model median fit
-  lower_ci = total_new_WW_summary$lower_95_CI,          # lower 95% CI
-  upper_ci = total_new_WW_summary$upper_95_CI           # upper 95% CI
-)
-
-# Plot the observed cases and model fit with 95% CI
-plot_wwfit=ggplot(plot_wwdata, aes(x = time)) +
-  geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
-  geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
-  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
-  labs(x = "Time", y = "Reported viral load", title = "fit vs. Observed viral load") +
-  theme_minimal() +
-  theme(legend.position = "top")
-
-plot_wwfit
-
-##Create a data frame for plotting
-obs_days <- ww_sample_days  # length 48
-obs_viral_load <- ww_raw$log10_daily_avg_cp_ml# log10(cp/mL/person)
-total_delayed_summary$day <- 1:nrow(total_delayed_summary)
-
-plot_df <- total_delayed_summary %>%
-  filter(day %in% obs_days) %>%
-  mutate(observedraw = obs_viral_load,
-         observedstd = ww_obs)
-
-#names(plot_df)
-ggplot(plot_df, aes(x = day)) +
-  geom_ribbon(aes(ymin = log10(lower_95_CI), ymax = log10(upper_95_CI)), fill = "lightblue", alpha = 0.4) +
-  geom_line(aes(y = log10(median)), color = "blue", size = 1) +
-  geom_point(aes(y = observedraw), color = "black", shape = 16, size = 2) +
-  geom_point(aes(y = observedstd), color = "red", shape = 16, size = 2) +
-  labs(
-    title = "Predicted Delayed Viral Load vs. Observed raw(black) vs Observed std(red)",
-    x = "Day",
-    y = "log10 copies/mL/person"
-  ) +
-  theme_minimal()
+posterior_summarycas <- summary_median_CI(mcmc_matrixallcas)
 
 
+total_cas_summary <- as.data.frame(posterior_summarycas[grep("cases_pred", rownames(posterior_summarycas)), ])
+total_casb_summary <- as.data.frame(posterior_summarycas[grep("mu_nb", rownames(posterior_summarycas)), ])
+total_cas_ww_summary <- as.data.frame(posterior_summarycas[grep("^log10_conc\\[", rownames(posterior_summarycas)), ])
+total_cas_wwb_summary <- as.data.frame(posterior_summarycas[grep("ww_pred", rownames(posterior_summarycas)), ])
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###########plot prevalence
-burn_in_timesteps <- 30
-prev_summaryb <- prev_summary[(burn_in_timesteps + 1):nrow(prev_summary), ]
-
-plot_prev <- data.frame(
-  time = 1:nrow(cases_obsb),                    # time index
-  #Time=case_dat$Date,
-  #observed = cases_obsb,                    # observed cases
-  median_fit = prev_summaryb$median,          # model median fit
-  lower_ci = prev_summaryb$lower_95_CI,          # lower 95% CI
-  upper_ci = prev_summaryb$upper_95_CI          # upper 95% CI
-)
-
-plotprev=ggplot(plot_prev, aes(x = time)) +
-  #geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
-  geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
-  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
-  labs(x = "Time", y = "Total prevalence(Actively infected)", title = "Prevalence-Combined model") +
-  theme_minimal() +
-  theme(legend.position = "top")
-
-plotprev
-
-CumInc_summary <- CumInc_summary[(burn_in_timesteps + 1):nrow(CumInc_summary), ]
-
-plot_CumInc <- data.frame(
-  time = 1:nrow(cases_obsb),                    # time index
-  #Time=case_dat$Date,
+###############generate data from the combined case model##########################
+plot_datcas <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  Date=case_dat$Date,
   observed = cases_obsb,                    # observed cases
-  median_fit = CumInc_summary$median,          # model median fit
-  lower_ci = CumInc_summary$lower_95_CI,          # lower 95% CI
-  upper_ci = CumInc_summary$upper_95_CI          # upper 95% CI
+  median_fit = total_cas_summary$median,         # model median fit
+  lower_ci = total_cas_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_cas_summary$upper_95_CI          # upper 95% CI
 )
 
-plotCumInc=ggplot(plot_CumInc, aes(x = time)) +
-  #geom_point(aes(y = observed), color = "black", size = 1) +  # observed cases
-  geom_line(aes(y = median_fit), color = "blue", size = 1) +                      # model median fit
-  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "lightblue", alpha = 0.5) +  # 95% CI
-  labs(x = "Time", y = "Cumulative incidence", title = "Cumulative incidence-Combined model") +
-  theme_minimal() +
-  theme(legend.position = "top")
+plot_datcasb <- data.frame(
+  time = 1:nrow(case_dat),                    # time index
+  Date=case_dat$Date,
+  observed = cases_obsb,                    # observed cases
+  median_fit = total_casb_summary$median,         # model median fit
+  lower_ci = total_casb_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_casb_summary$upper_95_CI          # upper 95% CI
+)
 
-plotCumInc
 
+plot_datacas_ww <- data.frame(
+  time = 1:nrow(ww_std), 
+  Date=ww_dat$date,
+  observed = ww_obs,                    # observed cases
+  median_fit = total_cas_ww_summary$median,          # model median fit
+  lower_ci = total_cas_ww_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_cas_ww_summary$upper_95_CI          # upper 95% CI
+)
+
+
+plot_datacas_wwb <- data.frame(
+  time = 1:nrow(ww_std), 
+  Date=ww_dat$date,
+  observed = ww_obs,                    # observed cases
+  median_fit = total_cas_wwb_summary$median,          # model median fit
+  lower_ci = total_cas_wwb_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_cas_wwb_summary$upper_95_CI          # upper 95% CI
+)
+
+
+#################Generate posterior plots##########
+custom_theme <- theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.title = element_text(size = 13),
+    axis.text = element_text(size = 11)
+  )
+
+# Shared plot elements
+plot_geom <- list(
+  geom_point(aes(y = observed), color = "black", size = 1.2, alpha = 0.7),
+  geom_line(aes(y = median_fit), color = "blue4", size = 1),
+  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "skyblue", alpha = 0.3)
+)
+
+# Cases – Case-only model
+plot_casefit <- ggplot(plot_datcas, aes(x = Date)) +
+  plot_geom +
+  #ylim(0, 20)+
+  ylim(0, 9)+
+  labs(
+    x = "Date", y = "Fit vs. observed cases",
+    title = "(Case-only model)"
+  ) +
+  custom_theme
+
+# Cases – Case-only model
+plot_casefitb <- ggplot(plot_datcasb, aes(x = Date)) +
+  plot_geom +
+  ylim(0, 11)+
+  #ylim(0, 9)+
+  labs(
+    x = "Date", y = "Fit vs. observed cases",
+    #title = "(Case-only model)"
+  ) +
+  custom_theme
+
+
+# Viral load – Case only model
+plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = Date)) +
+  plot_geom +
+  ylim(0, 9)+
+  labs(
+    x = "Date", y = "Fit vs. observed viral load",
+    title = "(Case-only model)"
+  ) +
+  custom_theme
+
+plot_wwcasefitb <- ggplot(plot_datacas_wwb, aes(x = Date)) +
+  plot_geom +
+  ylim(0, 9)+
+  labs(
+    x = "Date", y = "Fit vs. observed viral load",
+    title = "(Case-only model)"
+  ) +
+  custom_theme
+
+
+##########Predictive fits
+plot_casewwfit
+plot_casewwfitb
+plot_casefitb
+plot_casefit
+
+
+ZZ=(plot_casefit+plot_comcasefit+plot_casewwfitb)/(plot_casefitb+plot_comcasefitb+plot_casewwfit)
+ZZ+plot_layout(guides = "collect") & theme(legend.position = "bottom")
+
+mm=(plot_casefit+plot_comcasefit)/(plot_casefitb+plot_comcasefitb)
+mm
+
+vv=(plot_wwfit+plot_comwwfit)/(plot_wwfitb+plot_comwwfitb)
+vv
 
 
 
