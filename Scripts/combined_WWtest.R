@@ -715,18 +715,21 @@ inits_list <- list(
 #Run the model with different initial values for each chain
 system.time({
   Combined_WWtest<- run.jags(textstring, data = dataListcomb,
-                          monitor = c("ww_pred",
-                                      "log10_conc","phi",
-                                      "mult","log_mult",
-                                      "tau_ww","transit_time_mean",
-                                      "beta","kappa"),
+                          monitor = c("ww_pred","log10_conc_all","cases_pred",
+                                      "log10_conc","mu_nb","phi",
+                                      "P_total","A_total", "I_total","mult","log_mult",
+                                      "shed_P","shed_A","shed_I",
+                                      "tau_ww","transit_time_mean","transit_time_cv",
+                                      "beta","kappa",
+                                      "total_Cuminc", "active_infected","total_lambda",
+                                      "report_frac","Vea","Veb","m",
+                                      "delta_inv","theta_invall","omega_invall"),
                           method="parallel",
-                          sample = 1000, adapt =500, burnin = 500, thin = 1,
-                          #sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                          #sample = 2000, adapt =500, burnin = 500, thin = 1,
+                          sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                           n.chains = 2, inits = inits_list,
                           summarise = FALSE)
 })
-
 
 Comb_WWtest<- as.mcmc.list(Combined_WWtest)
 save(Comb_WWtest,file="U:/mpox25output/Comb_WWtest.RData")

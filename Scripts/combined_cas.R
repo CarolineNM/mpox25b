@@ -31,15 +31,22 @@ model {
    #transit_time_cv ~ dnorm(0.3, 36) T(0.15, 0.6) #wwmod12
    
    #########this is for model e
-  #log_mult ~ dnorm(log(3e-9), 300)
-  log_mult ~ dnorm(log(3e-9), 40)
-  mult <- exp(log_mult)
-  tau_ww ~ dgamma(40, 48)
-  #transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
-  transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
-  #transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
-  transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
+  # #log_mult ~ dnorm(log(3e-9), 300)
+  # log_mult ~ dnorm(log(3e-9), 40)
+  # mult <- exp(log_mult)
+  # tau_ww ~ dgamma(40, 48)
+  # #transit_time_mean ~ dnorm(2.5, 9) T(1.3, 4.5)
+  # transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
+  # #transit_time_cv ~ dnorm(0.3, 36) T(0.2, 0.6)
+  # transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
 
+   #########priors for original covid paper
+    log_mult ~ dunif(log(0.001), log(0.005))
+    mult <- exp(log_mult)
+    tau_ww ~ dgamma(40, 48)
+    transit_time_mean ~ dunif(1, 5)
+   
+   
    # Estimate both mean and CV
    ###other parameters
   
@@ -652,7 +659,7 @@ dataListcomb <- list(
   ww_obs = ww_obs,  # or ww_raw if unstandardized
   cases_obs=cases_obsb,
   ####precomputed g to include in the advection dispersion decay model
-  #transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
+  transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
   tmax=15)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
 ###precomputed start and end dates of defining the epi weeks
 # inits_list <- list(
@@ -674,32 +681,54 @@ dataListcomb <- list(
 #   )
 # )
 
+# inits_list <- list(
+#   list(
+#     log_mult = log(1e-8),  # Based on fixed value that worked
+#     #tau_ww = 0.4,          # Around posterior median (0.43)
+#     transit_time_mean = 2.5,  # Close to prior mean
+#     transit_time_cv = 0.3,    # Close to prior mean
+#     .RNG.name = "base::Wichmann-Hill",
+#     .RNG.seed = 42
+#   ),
+#   list(
+#     log_mult = log(8e-9),  # Slight variation for chain independence
+#     #tau_ww = 0.5,
+#     transit_time_mean = 2.8,
+#     transit_time_cv = 0.35,
+#     .RNG.name = "base::Wichmann-Hill",
+#     .RNG.seed = 99
+#   )
+# )
+
+
+
 inits_list <- list(
   list(
-    log_mult = log(1e-8),  # Based on fixed value that worked
-    #tau_ww = 0.4,          # Around posterior median (0.43)
-    transit_time_mean = 2.5,  # Close to prior mean
-    transit_time_cv = 0.3,    # Close to prior mean
+    beta = 0.8, kappa = 0.95, report_frac = 0.50,
+    log_mult = log(0.0015),  # Based on fixed value that worked
+    tau_ww = 0.4,          # Around posterior median (0.43)
+    transit_time_mean = 1.5,  # Close to prior mean
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 42
   ),
   list(
-    log_mult = log(8e-9),  # Slight variation for chain independence
-    #tau_ww = 0.5,
-    transit_time_mean = 2.8,
-    transit_time_cv = 0.35,
+    beta = 0.9, kappa = 0.92, report_frac = 0.55,
+    log_mult = log(0.004),  # Slight variation for chain independence
+    tau_ww = 0.5,
+    transit_time_mean = 4.0,
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 99
   )
 )
 
+
 #Run the model with different initial values for each chain
 system.time({
-  Combined_case<- run.jags(textstring, data = dataListcomb,
+  Combined_castest<- run.jags(textstring, data = dataListcomb,
                              monitor = c("log10_conc","cases_pred","mu_nb","mult","log_mult",
                                          "P_total","A_total", "I_total","ww_pred","tau_ww",
                                          "shed_P","shed_A","shed_I",
-                                         "transit_time_mean","transit_time_cv",
+                                         "transit_time_mean",
                                          "beta","kappa","phi",
                                          "total_Cuminc", "active_infected","total_lambda",
                                          "report_frac","Vea","Veb","m",
@@ -711,21 +740,21 @@ system.time({
                              summarise = FALSE)
 })
 
-Combined_case<- as.mcmc.list( Combined_case)
-save(Combined_case,file="U:/mpox25output/Combined_case.RData")
+Combined_castest<- as.mcmc.list(Combined_castest)
+save(Combined_castest,file="U:/mpox25output/Combined_castest.RData")
 
 ############generate output
-load(file="U:/mpox25output/Comblist_finald.RData")
+load(file="U:/mpox25output/Combined_castest.RData")
 ###generate traceplots
-traceplot(Comblist_finald[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(Comblist_finald[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Comblist_finald[, "mult"],main="Scaling factor of viral load")
-traceplot(Comblist_finald[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Comblist_finald[, "beta"],main="Transmission parameter")
-traceplot(Comblist_finald[, "kappa"],main="Mixing probability")
-traceplot(Comblist_finald[, "phi"],main="Negative binomial dispersion parmeter")
-traceplot(Comblist_finald[, "report_frac"],main="reporting fraction")
-traceplot(Comblist_finald[, "m"],main="Proportion of Asymptomatic fraction")
+traceplot(Combined_castest[, "transit_time_mean"],main="Mean transit time in sewer")
+#traceplot(Combined_castest[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(Combined_castest[, "mult"],main="Scaling factor of viral load")
+traceplot(Combined_castest[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Combined_castest[, "beta"],main="Transmission parameter")
+traceplot(Combined_castest[, "kappa"],main="Mixing probability")
+traceplot(Combined_castest[, "phi"],main="Negative binomial dispersion parmeter")
+traceplot(Combined_castest[, "report_frac"],main="reporting fraction")
+traceplot(Combined_castest[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
 chain_1_samples <- Comblist_mod7[[1]]

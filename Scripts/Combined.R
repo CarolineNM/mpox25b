@@ -39,12 +39,17 @@ model {
    
    #########this is for model h
    
-   log_mult ~ dnorm(log(3e-9), 40)
-   mult <- exp(log_mult)
-   tau_ww ~ dgamma(40, 48)
-   transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
-   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
-   
+   # log_mult ~ dnorm(log(3e-9), 40)
+   # mult <- exp(log_mult)
+   # tau_ww ~ dgamma(40, 48)
+   # transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
+   # transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
+   # 
+    #########priors for original covid paper
+    log_mult ~ dunif(log(0.001), log(0.005))
+    mult <- exp(log_mult)
+    tau_ww ~ dgamma(40, 48)
+    transit_time_mean ~ dunif(1, 5)
    
    # Estimate both mean and CV
    ###other parameters
@@ -677,7 +682,7 @@ dataListcomb <- list(
   ww_obs = ww_obs,  # or ww_raw if unstandardized
   cases_obs=cases_obsb,
   ####precomputed g to include in the advection dispersion decay model
-  #transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
+  transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
   tmax=15)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
 ###precomputed start and end dates of defining the epi weeks
 # inits_list <- list(
@@ -701,18 +706,18 @@ dataListcomb <- list(
 
 inits_list <- list(
   list(
-    log_mult = log(1e-8),  # Based on fixed value that worked
+    beta = 0.8, kappa = 0.95, report_frac = 0.50,
+    log_mult = log(0.0015),  # Based on fixed value that worked
     tau_ww = 0.4,          # Around posterior median (0.43)
-    transit_time_mean = 2.5,  # Close to prior mean
-    transit_time_cv = 0.3,    # Close to prior mean
+    transit_time_mean = 1.5,  # Close to prior mean
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 42
   ),
   list(
-    log_mult = log(8e-9),  # Slight variation for chain independence
+    beta = 0.9, kappa = 0.92, report_frac = 0.55,
+    log_mult = log(0.004),  # Slight variation for chain independence
     tau_ww = 0.5,
-    transit_time_mean = 2.8,
-    transit_time_cv = 0.35,
+    transit_time_mean = 4.0,
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 99
   )
@@ -720,8 +725,9 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_finalh<- run.jags(textstring, data = dataListcomb,
+  Combined_finaltest<- run.jags(textstring, data = dataListcomb,
                      monitor = c("ww_pred","cases_pred","log10_conc_all",
+                                 "E0","P0","A10","I10",
                                  "log10_conc","mu_nb",
                                  "P_total", "A_total", "I_total",
                                  "shed_P", "shed_A", "shed_I","mult","log_mult",
@@ -737,8 +743,8 @@ system.time({
                      summarise = FALSE)
 })
 
-Comblist_finalh<- as.mcmc.list( Combined_finalh)
-save(Comblist_finalh,file="U:/mpox25output/Comblist_finalh.RData")
+Combined_finaltest<- as.mcmc.list( Combined_finaltest)
+save(Combined_finaltest,file="U:/mpox25output/Combined_finaltest.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comblist_finald.RData")
