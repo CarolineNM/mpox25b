@@ -917,7 +917,8 @@ make_plot_df <- function(summary_matrix, burn_in_timesteps, T, scenario_label) {
     scenario = scenario_label
   ) %>%
     slice(-(1:burn_in_timesteps)) %>%
-    mutate(time = 1:n())  # Reset time to start from 1
+    mutate(time = 1:n(),
+           Date=case_dat$Date)  # Reset time to start from 1
   return(df)
 }
 
@@ -939,6 +940,7 @@ make_sampled_vload_df <- function(summary_matrix, obs_days, scenario_label) {
   
   df <- tibble(
     time = 1:length(obs_days),
+    Date=ww_dat$date,
     median = sampled_matrix[2, ],
     lower = sampled_matrix[1, ],
     upper = sampled_matrix[3, ],
@@ -976,19 +978,30 @@ FOI_df_baseline <- make_plot_df(FOI_summary_baseline, burn_in_timesteps, T, "Bas
 
 #########Now include the same output for the baseline######################3
 # Combine for faceted/overlaid plotting
-plot_cases_df <- bind_rows(cases_df_novax, cases_df_reduced,cases_df_baseline)
-plot_vload_df <- bind_rows(vload_df_novax, vload_df_reduced,vload_df_baseline)
-plot_prev_df <- bind_rows(prev_df_novax, prev_df_reduced,prev_df_baseline )
-plot_cuminc_df <- bind_rows(cuminc_df_novax, cuminc_df_reduced,cuminc_df_baseline)
-plot_vload_sampled <- bind_rows(vload_sampled_novax, vload_sampled_reduced,vload_sampled_baseline)
+#plot_cases_df <- bind_rows(cases_df_novax, cases_df_reduced,cases_df_baseline)
+#plot_vload_df <- bind_rows(vload_df_novax, vload_df_reduced,vload_df_baseline)
+#plot_prev_df <- bind_rows(prev_df_novax, prev_df_reduced,prev_df_baseline )
+#plot_cuminc_df <- bind_rows(cuminc_df_novax, cuminc_df_reduced,cuminc_df_baseline)
+#plot_vload_sampled <- bind_rows(vload_sampled_novax, vload_sampled_reduced,vload_sampled_baseline)
+
+
+#########Now include the same output for the baseline######################3
+# Combine for faceted/overlaid plotting
+plot_cases_df <- bind_rows(cases_df_novax, cases_df_baseline)
+plot_vload_df <- bind_rows(vload_df_novax, vload_df_baseline)
+plot_prev_df <- bind_rows(prev_df_novax, prev_df_baseline )
+plot_cuminc_df <- bind_rows(cuminc_df_novax, cuminc_df_baseline)
+plot_vload_sampled <- bind_rows(vload_sampled_novax,vload_sampled_baseline)
+
+
 
 ###########Now we generate plots for these plots
 plot_sim_output <- function(data, ylab, title, log_y = FALSE) {
-  ggplot(data, aes(x = time, y = median, color = scenario, fill = scenario)) +
+  ggplot(data, aes(x = Date, y = median, color = scenario, fill = scenario)) +
     geom_line(size = 1) +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, color = NA) +
     labs(
-      x = "Time (days)",
+      x = "Date",
       y = ylab,
       title = title,
       color = "Scenario",
@@ -1008,21 +1021,19 @@ p_prev <- plot_sim_output(plot_prev_df, ylab = "Prevalence", title = "Simulated 
 p_cuminc <- plot_sim_output(plot_cuminc_df, ylab = "Cumulative incidence", title = "Simulated Cumulative Incidence")
 
 
-bb=p_cases+p_vload_sampled+plot_layout(guides = "collect") & theme(legend.position = "bottom")
-bb
+dd=p_cases+p_vload_sampled+plot_layout(guides = "collect") & theme(legend.position = "bottom")
+dd
 
 ggsave(
-  filename = "D:/Mpox25output/Figures/plotrel.tiff",
-  plot = plotrel,  # use your actual plot variable here
-  width = 9,
-  height = 6,
+  filename = "D:/Mpox25output/Figures/plotfit.tiff",
+  plot = dd,  # use your actual plot variable here
+  width = 10,
+  height = 5,
   dpi = 300,
   units = "in",
   device = "tiff",
   compression = "lzw"
 )
-
-
 
 
 #########Contribution to viral load by sexual activity group#########
@@ -1080,7 +1091,8 @@ shedred_df <- summarise_relative_shedding_array(
   reducedshed$shed_P, reducedshed$shed_A, reducedshed$shed_I, "Reduced shedding"
 )
 
-relg_all <- dplyr::bind_rows(baseline_df, novax_df, shedred_df)
+#relg_all <- dplyr::bind_rows(baseline_df, novax_df, shedred_df)
+relg_all <- dplyr::bind_rows(baseline_df, novax_df)
 
 my_colors <- c(
   "Group 1 (low activity)" = "#F8766D",
@@ -1112,43 +1124,44 @@ plot_shedding_contributions <- function(shed_summary_df) {
 # Plot
 shedplot=plot_shedding_contributions(relg_all)
 
-
-shedP_1 <- shed_P_baseline[, 1, ]
-shedP_2 <- shed_P_baseline[, 2, ]
-shedP_3 <- shed_P_baseline[, 3, ]
-
-
 # Extract matrices for each group
-shedP_1 <- shed_P_baseline[, 1, ]
-shedP_2 <- shed_P_baseline[, 2, ]
-shedP_3 <- shed_P_baseline[, 3, ]
+shedP_1 <- baseline$shed_P[, 1, ]
+shedP_2 <- baseline$shed_P[, 2, ]
+shedP_3 <- baseline$shed_P[, 3, ]
 
-shedA_1 <- shed_A_baseline[, 1, ]
-shedA_2 <- shed_A_baseline[, 2, ]
-shedA_3 <- shed_A_baseline[, 3, ]
+shedA_1 <- baseline$shed_A[, 1, ]
+shedA_2 <- baseline$shed_A[, 2, ]
+shedA_3 <- baseline$shed_A[, 3, ]
 
-shedI_1 <- shed_I_baseline[, 1, ]
-shedI_2 <- shed_I_baseline[, 2, ]
-shedI_3 <- shed_I_baseline[, 3, ]
+shedI_1 <- baseline$shed_I[, 1, ]
+shedI_2 <- baseline$shed_I[, 2, ]
+shedI_3 <- baseline$shed_I[, 3, ]
 
 
 # Total shedding for each group (denominator)
-
 shed1_total <- shedP_1 + shedA_1 + shedI_1
 shed2_total <- shedP_2 + shedA_2 + shedI_2
 shed3_total <- shedP_3 + shedA_3 + shedI_3
 shedall_total <- shed1_total + shed2_total + shed3_total
-
 
 # Relative contribution of each group
 relg_1 <- shed1_total / shedall_total
 relg_2 <- shed2_total/ shedall_total
 relg_3 <- shed3_total / shedall_total
 
+
+burn_in <- 30
+
+# Remove first 30 timesteps from each matrix
+relg_1_burned <- relg_1[, (burn_in+1):ncol(relg_1)]
+relg_2_burned <- relg_2[, (burn_in+1):ncol(relg_2)]
+relg_3_burned <- relg_3[, (burn_in+1):ncol(relg_3)]
+
 # Function to summarize posterior samples over time
 summary_rel_group <- function(mat, group_label) {
   data.frame(
     time = 1:ncol(mat),
+    Date=case_dat$Date,# time index
     median = apply(mat, 2, median, na.rm = TRUE),
     lower = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
     upper = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
@@ -1156,19 +1169,19 @@ summary_rel_group <- function(mat, group_label) {
   )
 }
 
+
 # Combine summaries for plotting
 relg_all <- dplyr::bind_rows(
-  summary_rel_group(relg_1, "Group 1 (low activity)"),
-  summary_rel_group(relg_2, "Group 2 (medium activity)"),
-  summary_rel_group(relg_3, "Group 3 (high activity)")
+  summary_rel_group(relg_1_burned, "Group 1 (low activity)"),
+  summary_rel_group(relg_2_burned, "Group 2 (medium activity)"),
+  summary_rel_group(relg_3_burned, "Group 3 (high activity)")
 )
-
 
 plotshed=ggplot(relg_all, aes(x = time, y = median, fill = group, color = group)) +
   geom_line(size = 1) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, linetype = 0) +
   labs(
-    title = "Relative contribution to shedding by sexual activity group",
+    title = "Relative contribution to shedding by sexual activity group(simulation)",
     x = "Time",
     y = "Proportion of viral load shed"
   ) +
