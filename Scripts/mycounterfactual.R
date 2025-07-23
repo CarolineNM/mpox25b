@@ -1124,8 +1124,7 @@ plot_shedding_contributions <- function(shed_summary_df) {
 # Plot
 shedplot=plot_shedding_contributions(relg_all)
 
-# Extract matrices for each group
-shedP_1 <- baseline$shed_P[, 1, ]
+shedP_1 <- baseline$shed_P[, 1, ]  # shape: [draw, time]
 shedP_2 <- baseline$shed_P[, 2, ]
 shedP_3 <- baseline$shed_P[, 3, ]
 
@@ -1137,18 +1136,16 @@ shedI_1 <- baseline$shed_I[, 1, ]
 shedI_2 <- baseline$shed_I[, 2, ]
 shedI_3 <- baseline$shed_I[, 3, ]
 
-
-# Total shedding for each group (denominator)
+# Total per group
 shed1_total <- shedP_1 + shedA_1 + shedI_1
 shed2_total <- shedP_2 + shedA_2 + shedI_2
 shed3_total <- shedP_3 + shedA_3 + shedI_3
+
 shedall_total <- shed1_total + shed2_total + shed3_total
 
-# Relative contribution of each group
 relg_1 <- shed1_total / shedall_total
-relg_2 <- shed2_total/ shedall_total
+relg_2 <- shed2_total / shedall_total
 relg_3 <- shed3_total / shedall_total
-
 
 burn_in <- 30
 
@@ -1192,10 +1189,13 @@ plotshed=ggplot(relg_all, aes(x = time, y = median, fill = group, color = group)
 plotshed
 
 
+# Mean symptomatic shedding per group over time
+mean_shed_I_by_group <- apply(baseline$shed_I, c(2,3), mean)  # [group, time]
 
-
-
-
+matplot(t(mean_shed_I_by_group), type = "l", lty = 1, col = c("red", "green", "blue"),
+        ylab = "Mean symptomatic shedding by group", xlab = "Time")
+legend("topright", legend = c("Group 1", "Group 2", "Group 3"),
+       col = c("red", "green", "blue"), lty = 1)
 
 
 
