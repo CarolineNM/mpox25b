@@ -769,7 +769,7 @@ summary_median_CI <- function(samples) {
 # Summarize the posterior distributions for all parameters
 #posterior_summary <- summary_median_CI(as.matrix(sampled_mcmc))
 posterior_summaryb <- summary_median_CI(mcmc_matrixall)
-posterior_summaryb[grep("mult|tau_ww|transit_time_mean", rownames(posterior_summaryb)), ]
+posterior_summaryb[grep("mult|tau_ww|transit_time_mean|beta|kappa", rownames(posterior_summaryb)), ]
 
 # If you want to focus on specific parameters, e.g., total_new_cases and new_I3_cases:
 total_new_WW_summary <- as.data.frame(posterior_summaryb[grep("ww_pred", rownames(posterior_summaryb)), ])
@@ -780,9 +780,9 @@ plot_wwdata <- data.frame(
   time = 1:nrow(ww_std),                    # time index
   #Time=case_dat$Date,
   observed = ww_obs,                    # observed cases
-  median_fit = total_delayed_summary$median,          # model median fit
-  lower_ci = total_delayed_summary$lower_95_CI,          # lower 95% CI
-  upper_ci = total_delayed_summary$upper_95_CI           # upper 95% CI
+  median_fit = total_new_WW_summary$median,          # model median fit
+  lower_ci = total_new_WW_summary$lower_95_CI,          # lower 95% CI
+  upper_ci = total_new_WW_summary$upper_95_CI           # upper 95% CI
 )
 
 # Plot the observed cases and model fit with 95% CI
