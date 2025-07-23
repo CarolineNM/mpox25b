@@ -25,25 +25,14 @@ ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW dat
 ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 
 #######load the three outputs
-load("U:/mpox25output/Combined_finaltest.RData")
-load("U:/mpox25output/Comb_WWtest.RData")
-load("U:/mpox25output/Combined_castest.RData")
+load("D:/mpox25output/Comblist_finalg.RData")
+load("D:/mpox25output/Combined_WWd.RData")
+load("D:/mpox25output/Combined_casd.RData")
 
-<<<<<<< HEAD
-=======
-#load("D:/mpox25output/Combined_cas.RData")
-#load("D:/mpox25output/Case_modlstfinalc.RData")
-######What did we save in each model?
-# options(max.print = 10000)  # or higher depending on your needs
-# print(colnames(as.matrix(Combined_casb)))
-# cat(colnames(as.matrix(Combined_casb)), sep = "\n")
-# View(as.data.frame(colnames(as.matrix(Combined_casb))))
-
->>>>>>> 7793fd8451dca7da339204cd0ff7fcb69a397d53
 ######generate the model fit
-mcmc_matrixallWW<-as.matrix(Comb_WWtest)
-mcmc_matrixallcas<-as.matrix(Combined_castest) ###most recent version
-mcmc_matrixallcom<-as.matrix(Combined_finaltest)
+mcmc_matrixallWW<-as.matrix(Combined_WWd)
+mcmc_matrixallcas<-as.matrix(Combined_casd) ###most recent version
+mcmc_matrixallcom<-as.matrix(Comblist_finalg)
 
 # Function to compute the median and 95% credible interval
 summary_median_CI <- function(samples) {
@@ -210,8 +199,8 @@ plot_geom <- list(
 # Cases – Case-only model
 plot_casefit <- ggplot(plot_datcas, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 20)+
-  ylim(0, 9)+
+  ylim(0, 20)+
+  #ylim(0, 9)+
   labs(
     x = "Date", y = "Fit vs. observed cases",
     title = "(Case-only model)"
@@ -221,8 +210,8 @@ plot_casefit <- ggplot(plot_datcas, aes(x = Date)) +
 # Cases – Case-only model
 plot_casefitb <- ggplot(plot_datcasb, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 11)+
-  ylim(0, 9)+
+  ylim(0, 11)+
+  #ylim(0, 9)+
   labs(
     x = "Date", y = "Fit vs. observed cases",
     #title = "(Case-only model)"
@@ -232,7 +221,7 @@ plot_casefitb <- ggplot(plot_datcasb, aes(x = Date)) +
 # Cases – ww-only model
 plot_casewwfit <- ggplot(plot_dataww_cases, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 11)+
+  ylim(0, 11)+
   labs(
     x = "Date", y = "Fit vs. observed cases",
     #title = "(WW-only model)"
@@ -242,7 +231,7 @@ plot_casewwfit <- ggplot(plot_dataww_cases, aes(x = Date)) +
 # Cases – ww-only model
 plot_casewwfitb <- ggplot(plot_dataww_casesb, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 20)+
+  ylim(0, 20)+
   labs(
     x = "Date", y = "Fit vs. observed cases",
     title = "(WW-only model)"
@@ -611,7 +600,7 @@ beta_df_all <- bind_rows(all_param_dfs)
 beta_df_all$source <- factor(beta_df_all$source, levels = c("Combined","Viral load-only","Case-only","Prior"))
 beta_df_all$parameter_label <- param_labels[beta_df_all$parameter]
 
-WW_params <- c("mult", "transit_time_mean","tau_ww","beta")
+WW_params <- c("mult", "transit_time_mean","tau_ww","beta","transit_time_cv")
 
 plota=ggplot(beta_df_all %>% filter(parameter %in% WW_params), 
              aes(x = value, y = source, fill = source)) +
@@ -630,10 +619,6 @@ plota=ggplot(beta_df_all %>% filter(parameter %in% WW_params),
     axis.text.x = element_text(size = 12)
   )
 plota
-
-
-
-
 
 
 
