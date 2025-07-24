@@ -724,52 +724,38 @@ inits_list <- list(
 
 
 # #Run the model with different initial values for each chain
-# system.time({
-#   Combined_WWtest<- run.jags(textstring, data = dataListcomb,
-#                           monitor = c("ww_pred","log10_conc_all","cases_pred",
-#                                       "log10_conc","mu_nb","phi",
-#                                       "P_total","A_total", "I_total","mult","log_mult",
-#                                       "shed_P","shed_A","shed_I",
-#                                       "tau_ww","transit_time_mean","transit_time_cv",
-#                                       "beta","kappa",
-#                                       "total_Cuminc", "active_infected","total_lambda",
-#                                       "report_frac","Vea","Veb","m",
-#                                       "delta_inv","theta_invall","omega_invall"),
-#                           method="parallel",
-#                           #sample = 2000, adapt =500, burnin = 500, thin = 1,
-#                           sample = 30000, adapt =4000, burnin = 4000, thin = 2,
-#                           n.chains = 2, inits = inits_list,
-#                           summarise = FALSE)
-# })
-
 system.time({
-Combined_WWtest<- run.jags(textstring, data = dataListcomb,
-                           monitor = c("ww_pred","cases_pred",
-                                       "mult","log_mult",
-                                       "tau_ww","transit_time_mean","transit_time_cv",
-                                       "beta","kappa"),
-                           method="parallel",
-                           sample = 5000, adapt =1000, burnin = 1000, thin = 1,
-                           #sample = 30000, adapt =4000, burnin = 4000, thin = 2,
-                           n.chains = 2, inits = inits_list,
-                           summarise = FALSE)
+  Combined_WWtest<- run.jags(textstring, data = dataListcomb,
+                          monitor = c("ww_pred","log10_conc_all","cases_pred",
+                                      "log10_conc","mu_nb","phi",
+                                      "P_total","A_total", "I_total","mult","log_mult",
+                                      "shed_P","shed_A","shed_I",
+                                      "tau_ww","transit_time_mean","transit_time_cv",
+                                      "beta","kappa",
+                                      "total_Cuminc", "active_infected","total_lambda",
+                                      "report_frac","Vea","Veb","m",
+                                      "delta_inv","theta_invall","omega_invall"),
+                          method="parallel",
+                          #sample = 2000, adapt =500, burnin = 500, thin = 1,
+                          sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                          n.chains = 2, inits = inits_list,
+                          summarise = FALSE)
 })
 
 
 
-Comb_WWtestb<- as.mcmc.list(Combined_WWtest)
-save(Comb_WWtestb,file="D:/mpox25output/Comb_WWtestb.RData")
+Comb_WWtestc<- as.mcmc.list(Combined_WWtest)
+save(Comb_WWtestc,file="U:/mpox25output/Comb_WWtestc.RData")
 
 ###load data#############
-
-load(file="D:/mpox25output/Comb_WWtestb.RData")
+load(file="U:/mpox25output/Comb_WWtestc.RData")
 ###generate traceplots
-traceplot(Comb_WWtestb[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(Comb_WWtestb[, "mult"],main="Scaling factor of viral load")
-traceplot(Comb_WWtestb[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Comb_WWtestb[, "beta"],main="Transmission parameter")
-traceplot(Comb_WWtestb[, "kappa"],main="Mixing probability")
-traceplot(Comb_WWtestb[, "phi"],main="Negative binomial dispersion parmeter")
+traceplot(Comb_WWtestc[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Comb_WWtestc[, "mult"],main="Scaling factor of viral load")
+traceplot(Comb_WWtestc[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Comb_WWtestc[, "beta"],main="Transmission parameter")
+traceplot(Comb_WWtestc[, "kappa"],main="Mixing probability")
+traceplot(Comb_WWtestc[, "phi"],main="Negative binomial dispersion parmeter")
 
 
 #####extract samples for plotting
