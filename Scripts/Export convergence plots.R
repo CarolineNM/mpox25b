@@ -565,6 +565,9 @@ prior_definitions <- list(
   tau_ww = function(n) rgamma(n, shape = 40, rate = 48)
 )
 
+
+
+
 extract_param <- function(mcmc_obj, param_name, model_label) {
   df <- as.data.frame(as.matrix(mcmc_obj)[, param_name])
   colnames(df) <- "value"
