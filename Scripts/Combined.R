@@ -46,11 +46,19 @@ model {
    # transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    # 
     #########priors for original covid paper
-    log_mult ~ dunif(log(0.001), log(0.005))
-    mult <- exp(log_mult)
-    tau_ww ~ dgamma(40, 48)
-    transit_time_mean ~ dunif(1, 5)
+    # log_mult ~ dunif(log(0.001), log(0.005))
+    # mult <- exp(log_mult)
+    # tau_ww ~ dgamma(40, 48)
+    # transit_time_mean ~ dunif(1, 5)
    
+    ##New wider priors
+  log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
+  mult <- exp(log_mult)
+  tau_ww ~ dgamma(40, 48)
+  transit_time_mean ~ dnorm(2.5, 0.25)
+  transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
+   
+
    # Estimate both mean and CV
    ###other parameters
   
@@ -461,10 +469,11 @@ for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
 for (w in 1:T_WWobs) {
    cp_total[w] <- delayed_conc[ww_sample_days[w]] * mult
   cp_per_person[w] <- cp_total[w] / wwtp_population
-  cp_per_person_mL[w] <- cp_per_person[w] * flow_mL_daily[w]
-
-  log10_conc[w] <- log(cp_per_person_mL[w] + 1) / log(10)
-
+  #cp_per_person_mL[w] <- cp_per_person[w] * flow_mL_daily[w]
+  #log10_conc[w] <- log(cp_per_person_mL[w] + 1) / log(10)
+  cp_raw[w] <- cp_per_person[w] * flow_mL_daily[w]
+  cp_safe[w] <- max(cp_raw[w], 1e-6)
+  log10_conc[w] <- log(cp_safe[w]) / log(10)
   ww_obs[w] ~ dnorm(log10_conc[w], tau_ww)
   ww_pred[w] ~ dnorm(log10_conc[w], tau_ww)
 
@@ -562,30 +571,6 @@ mu_v<- c(rep(0, burn_in_timesteps), v2)   ###mu is the per capita vaccination ra
 #mutest set to zero
 #mu<- rep(0, 199)
 
-
-##########Ww compartments#############
-# tau=0.776   ##relative infectiousness of Asymptomatic vs symptomatic(0.8 covid paper)
-# shed.I1 = 12.3  # log10 cp/ml fecal shedding kinetics for symptomatic stage 1
-# shed.I2 = 11.5  # # log10 cp/ml fecal shedding kinetics for symptomatic stage 2
-# shed.I3 = 10.2 # l# log10 cp/ml fecal shedding kinetics for symptomatic stage 3
-# shed.I1a<-shed.I1 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 1
-# shed.I2a<-shed.I2 # log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 2
-# shed.I3a<-shed.I3# log10 cp/ml fecal shedding kinetics for 1st dose symptomatic stage 3
-# shed.I1b<-shed.I1 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 1
-# shed.I2b<-shed.I2 # log10 cp/mlfecal shedding kinetics for 2nd  dose symptomatic stage 2
-# shed.I3b<-shed.I3# log10 cp/ml fecal shedding kinetics for 2nd dose symptomatic stage 3
-# shed.A1 = 12.3*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 1
-# shed.A2 = 11.5*tau # llog10 cp/ml fecal shedding kinetics for asymptomatic stage 2
-# shed.A3 = 10.2*tau # log10 cp/ml fecal shedding kinetics for asymptomatic stage 3
-# shed.A1a<-shed.A1 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 1
-# shed.A2a<-shed.A2 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 2
-# shed.A3a<-shed.A3 # log10 cp/ml fecal shedding kinetics for 1st dose asymptomatic stage 3
-# shed.A1b<-shed.A1 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 1
-# shed.A2b<-shed.A2 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 2
-# shed.A3b<-shed.A3 # log10 cp/ml fecal shedding kinetics for 2nd dose asymptomatic stage 3
-# alpha=12.3*tau   ### log10 cp/ml fecal shedding kinetics for presymptomatic
-
-
 ########1st convert all parameters to log scale
 tau=0.776
 shed.I1 = 10^12.3
@@ -682,78 +667,78 @@ dataListcomb <- list(
   ww_obs = ww_obs,  # or ww_raw if unstandardized
   cases_obs=cases_obsb,
   ####precomputed g to include in the advection dispersion decay model
-  transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
+  #transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
   tmax=15)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
 ###precomputed start and end dates of defining the epi weeks
-# inits_list <- list(
-#   list(
-#     log_mult = log(1.5e-9),
-#     transit_time_mean = 2.6,
-#     transit_time_cv = 0.35,
-#     tau_ww = 0.55,
-#     .RNG.name = "base::Wichmann-Hill",
-#     .RNG.seed = 42
-#   ),
-#   list(
-#     log_mult = log(1.2e-9),
-#     transit_time_mean = 2.4,
-#     transit_time_cv = 0.28,
-#     tau_ww = 0.50,
-#     .RNG.name = "base::Wichmann-Hill",
-#     .RNG.seed = 99
-#   )
-# )
-
 inits_list <- list(
   list(
     beta = 0.8, kappa = 0.95, report_frac = 0.50,
-    log_mult = log(0.0015),  # Based on fixed value that worked
+    log_mult = log(3.5e-9),  # Based on fixed value that worked
     tau_ww = 0.4,          # Around posterior median (0.43)
-    transit_time_mean = 1.5,  # Close to prior mean
+    transit_time_mean = 2.5,  # Close to prior mean
+    transit_time_cv = 0.3,    # Close to prior mean
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 42
   ),
   list(
     beta = 0.9, kappa = 0.92, report_frac = 0.55,
-    log_mult = log(0.004),  # Slight variation for chain independence
+    log_mult = log(2.5e-9),  # Slight variation for chain independence
     tau_ww = 0.5,
-    transit_time_mean = 4.0,
+    transit_time_mean = 2.8,
+    transit_time_cv = 0.35,
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 99
   )
 )
 
+
+# #Run the model with different initial values for each chain
+# system.time({
+#   Combined_finaltest<- run.jags(textstring, data = dataListcomb,
+#                      monitor = c("ww_pred","cases_pred","log10_conc_all",
+#                                  "E0","P0","A10","I10",
+#                                  "log10_conc","mu_nb",
+#                                  "P_total", "A_total", "I_total",
+#                                  "shed_P", "shed_A", "shed_I","mult","log_mult",
+#                                  "tau_ww","transit_time_mean","transit_time_cv",
+#                                  "beta","kappa","phi",
+#                                  "total_Cuminc", "active_infected","total_lambda",
+#                                  "report_frac","Vea","Veb","m",
+#                                  "delta_inv","theta_invall","omega_invall"),
+#                      method="parallel",
+#                      #sample = 2000, adapt =500, burnin = 500, thin = 1,
+#                      sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+#                      n.chains = 2, inits = inits_list,
+#                      summarise = FALSE)
+# })
+
+
 #Run the model with different initial values for each chain
 system.time({
-  Combined_finaltest<- run.jags(textstring, data = dataListcomb,
-                     monitor = c("ww_pred","cases_pred","log10_conc_all",
-                                 "E0","P0","A10","I10",
-                                 "log10_conc","mu_nb",
-                                 "P_total", "A_total", "I_total",
-                                 "shed_P", "shed_A", "shed_I","mult","log_mult",
-                                 "tau_ww","transit_time_mean","transit_time_cv",
-                                 "beta","kappa","phi",
-                                 "total_Cuminc", "active_infected","total_lambda",
-                                 "report_frac","Vea","Veb","m",
-                                 "delta_inv","theta_invall","omega_invall"),
-                     method="parallel",
-                     #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                     sample = 30000, adapt =4000, burnin = 4000, thin = 2,
-                     n.chains = 2, inits = inits_list,
-                     summarise = FALSE)
+  Combined_finaltestb<- run.jags(textstring, data = dataListcomb,
+                                monitor = c("ww_pred","cases_pred",
+                                            "mult","log_mult",
+                                            "tau_ww","transit_time_mean","transit_time_cv",
+                                            "beta","kappa"),
+                                method="parallel",
+                                sample = 5000, adapt =1000, burnin = 1000, thin = 1,
+                                #sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                                n.chains = 2, inits = inits_list,
+                                summarise = FALSE)
 })
 
-Combined_finaltest<- as.mcmc.list( Combined_finaltest)
-save(Combined_finaltest,file="U:/mpox25output/Combined_finaltest.RData")
+
+Combined_finaltestb<- as.mcmc.list(Combined_finaltestb)
+save(Combined_finaltestb,file="D:/mpox25output/Combined_finaltestb.RData")
 
 ############generate output
-load(file="U:/mpox25output/Comblist_finald.RData")
+load(file="D:/mpox25output/Combined_finaltestb.RData")
 ###generate traceplots
-traceplot(Comblist_finald[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(Comblist_finald[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Comblist_finald[, "mult"],main="Scaling factor of viral load")
-traceplot(Comblist_finald[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Comblist_finald[, "beta"],main="Transmission parameter")
+traceplot(Combined_finaltestb[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Combined_finaltestb[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(Combined_finaltestb[, "mult"],main="Scaling factor of viral load")
+traceplot(Combined_finaltestb[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Combined_finaltestb[, "beta"],main="Transmission parameter")
 traceplot(Comblist_finald[, "kappa"],main="Mixing probability")
 traceplot(Comblist_finald[, "phi"],main="Negative binomial dispersion parmeter")
 traceplot(Comblist_finald[, "report_frac"],main="reporting fraction")
@@ -761,7 +746,7 @@ traceplot(Comblist_finald[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting
 chain_1_samples <- Comblist_mod7[[1]]
-mcmc_matrixall<-as.matrix(Comblist_mod7)
+mcmc_matrixall<-as.matrix(Combined_finaltestb)
 ###randomly sample the list to generate summaries of predicted data
 mcmc_matrix<-as.matrix(chain_1_samples)
 total_samples <- nrow(mcmc_matrix)

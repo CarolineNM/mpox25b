@@ -39,20 +39,27 @@ model {
   
   
     #########this is for model e
-  #log_mult ~ dnorm(log(3e-9), 40)
-  #mult <- exp(log_mult)
-  #tau_ww ~ dgamma(40, 48)
-  #transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
-  #transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
+  # log_mult ~ dnorm(log(3e-9), 40)
+  # mult <- exp(log_mult)
+  # tau_ww ~ dgamma(40, 48)
+  # transit_time_mean ~ dnorm(2.5, 1) T(1, 5)
+  # transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
   
   
-    #########priors for original covid paper
-    log_mult ~ dunif(log(0.001), log(0.005))
-    mult <- exp(log_mult)
-    tau_ww ~ dgamma(40, 48)
-    transit_time_mean ~ dunif(1, 5)
-  
+    # #########priors for original covid paper
+    # log_mult ~ dunif(log(0.001), log(0.005))
+    # mult <- exp(log_mult)
+    # tau_ww ~ dgamma(40, 48)
+    # transit_time_mean ~ dunif(1, 5)
+  # 
+     ##New wider priors
+  log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
+  mult <- exp(log_mult)
+  tau_ww ~ dgamma(40, 48)
+  transit_time_mean ~ dnorm(2.5, 0.25)
+  transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
+
    # Estimate both mean and CV
    ###other parameters
   
@@ -463,12 +470,13 @@ for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
 
 
 for (w in 1:T_WWobs) {
-   cp_total[w] <- delayed_conc[ww_sample_days[w]] * mult
+     cp_total[w] <- delayed_conc[ww_sample_days[w]] * mult
   cp_per_person[w] <- cp_total[w] / wwtp_population
-  cp_per_person_mL[w] <- cp_per_person[w] * flow_mL_daily[w]
-
-  log10_conc[w] <- log(cp_per_person_mL[w] + 1) / log(10)
-
+  #cp_per_person_mL[w] <- cp_per_person[w] * flow_mL_daily[w]
+  #log10_conc[w] <- log(cp_per_person_mL[w] + 1) / log(10)
+  cp_raw[w] <- cp_per_person[w] * flow_mL_daily[w]
+  cp_safe[w] <- max(cp_raw[w], 1e-6)
+  log10_conc[w] <- log(cp_safe[w]) / log(10)
   ww_obs[w] ~ dnorm(log10_conc[w], tau_ww)
   ww_pred[w] ~ dnorm(log10_conc[w], tau_ww)
 
@@ -689,66 +697,84 @@ dataListcomb <- list(
   ww_obs = ww_obs,  # or ww_raw if unstandardized
   cases_obs=cases_obsb,
   ####precomputed g to include in the advection dispersion decay model
-  transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
+  #transit_time_cv=0.3,     #std dev transit time between shedding and sampling sites (in days)
   tmax=15)  #Max mean = 5,Max SD = 5 × 0.5 = 2.5,Max plausible delay ≈ mean + 5×SD = 5 + (5×2.5) = 17.5
 
 
 inits_list <- list(
   list(
     beta = 0.8, kappa = 0.95, report_frac = 0.50,
-    log_mult = log(0.0015),  # Based on fixed value that worked
+    log_mult = log(3.5e-9),  # Based on fixed value that worked
     tau_ww = 0.4,          # Around posterior median (0.43)
-    transit_time_mean = 1.5,  # Close to prior mean
+    transit_time_mean = 2.5,  # Close to prior mean
+    transit_time_cv = 0.3,    # Close to prior mean
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 42
   ),
   list(
     beta = 0.9, kappa = 0.92, report_frac = 0.55,
-    log_mult = log(0.004),  # Slight variation for chain independence
+    log_mult = log(2.5e-9),  # Slight variation for chain independence
     tau_ww = 0.5,
-    transit_time_mean = 4.0,
+    transit_time_mean = 2.8,
+    transit_time_cv = 0.35,
     .RNG.name = "base::Wichmann-Hill",
     .RNG.seed = 99
   )
 )
 
-#Run the model with different initial values for each chain
+
+# #Run the model with different initial values for each chain
+# system.time({
+#   Combined_WWtest<- run.jags(textstring, data = dataListcomb,
+#                           monitor = c("ww_pred","log10_conc_all","cases_pred",
+#                                       "log10_conc","mu_nb","phi",
+#                                       "P_total","A_total", "I_total","mult","log_mult",
+#                                       "shed_P","shed_A","shed_I",
+#                                       "tau_ww","transit_time_mean","transit_time_cv",
+#                                       "beta","kappa",
+#                                       "total_Cuminc", "active_infected","total_lambda",
+#                                       "report_frac","Vea","Veb","m",
+#                                       "delta_inv","theta_invall","omega_invall"),
+#                           method="parallel",
+#                           #sample = 2000, adapt =500, burnin = 500, thin = 1,
+#                           sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+#                           n.chains = 2, inits = inits_list,
+#                           summarise = FALSE)
+# })
+
 system.time({
-  Combined_WWtest<- run.jags(textstring, data = dataListcomb,
-                          monitor = c("ww_pred","log10_conc_all","cases_pred",
-                                      "log10_conc","mu_nb","phi",
-                                      "P_total","A_total", "I_total","mult","log_mult",
-                                      "shed_P","shed_A","shed_I",
-                                      "tau_ww","transit_time_mean","transit_time_cv",
-                                      "beta","kappa",
-                                      "total_Cuminc", "active_infected","total_lambda",
-                                      "report_frac","Vea","Veb","m",
-                                      "delta_inv","theta_invall","omega_invall"),
-                          method="parallel",
-                          #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                          sample = 30000, adapt =4000, burnin = 4000, thin = 2,
-                          n.chains = 2, inits = inits_list,
-                          summarise = FALSE)
+Combined_WWtest<- run.jags(textstring, data = dataListcomb,
+                           monitor = c("ww_pred","cases_pred",
+                                       "mult","log_mult",
+                                       "tau_ww","transit_time_mean","transit_time_cv",
+                                       "beta","kappa"),
+                           method="parallel",
+                           sample = 5000, adapt =1000, burnin = 1000, thin = 1,
+                           #sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                           n.chains = 2, inits = inits_list,
+                           summarise = FALSE)
 })
 
-Comb_WWtest<- as.mcmc.list(Combined_WWtest)
-save(Comb_WWtest,file="U:/mpox25output/Comb_WWtest.RData")
+
+
+Comb_WWtestb<- as.mcmc.list(Combined_WWtest)
+save(Comb_WWtestb,file="D:/mpox25output/Comb_WWtestb.RData")
 
 ###load data#############
 
-load(file="U:/mpox25output/Comb_WWtest.RData")
+load(file="D:/mpox25output/Comb_WWtestb.RData")
 ###generate traceplots
-traceplot(Comb_WWtest[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(Comb_WWtest[, "mult"],main="Scaling factor of viral load")
-traceplot(Comb_WWtest[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Comb_WWtest[, "beta"],main="Transmission parameter")
-traceplot(Comb_WWtest[, "kappa"],main="Mixing probability")
-traceplot(Comb_WWtest[, "phi"],main="Negative binomial dispersion parmeter")
+traceplot(Comb_WWtestb[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Comb_WWtestb[, "mult"],main="Scaling factor of viral load")
+traceplot(Comb_WWtestb[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Comb_WWtestb[, "beta"],main="Transmission parameter")
+traceplot(Comb_WWtestb[, "kappa"],main="Mixing probability")
+traceplot(Comb_WWtestb[, "phi"],main="Negative binomial dispersion parmeter")
 
 
 #####extract samples for plotting
 chain_1_samples <- Comb_WWtest[[1]]
-mcmc_matrixall<-as.matrix(Comb_WWtest)
+mcmc_matrixall<-as.matrix(Comb_WWtestb)
 ###randomly sample the list to generate summaries of predicted data
 mcmc_matrix<-as.matrix(chain_1_samples)
 total_samples <- nrow(mcmc_matrix)
