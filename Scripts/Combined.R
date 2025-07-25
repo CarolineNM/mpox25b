@@ -55,7 +55,7 @@ model {
   log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 0.25)
+  transit_time_mean ~ dnorm(2.5, 0.25) T(0.1, 10)
   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
 
@@ -693,55 +693,40 @@ inits_list <- list(
 
 
 # #Run the model with different initial values for each chain
-# system.time({
-#   Combined_finaltest<- run.jags(textstring, data = dataListcomb,
-#                      monitor = c("ww_pred","cases_pred","log10_conc_all",
-#                                  "E0","P0","A10","I10",
-#                                  "log10_conc","mu_nb",
-#                                  "P_total", "A_total", "I_total",
-#                                  "shed_P", "shed_A", "shed_I","mult","log_mult",
-#                                  "tau_ww","transit_time_mean","transit_time_cv",
-#                                  "beta","kappa","phi",
-#                                  "total_Cuminc", "active_infected","total_lambda",
-#                                  "report_frac","Vea","Veb","m",
-#                                  "delta_inv","theta_invall","omega_invall"),
-#                      method="parallel",
-#                      #sample = 2000, adapt =500, burnin = 500, thin = 1,
-#                      sample = 30000, adapt =4000, burnin = 4000, thin = 2,
-#                      n.chains = 2, inits = inits_list,
-#                      summarise = FALSE)
-# })
-
-
-#Run the model with different initial values for each chain
 system.time({
-  Combined_finaltestb<- run.jags(textstring, data = dataListcomb,
-                                monitor = c("ww_pred","cases_pred",
-                                            "mult","log_mult",
-                                            "tau_ww","transit_time_mean","transit_time_cv",
-                                            "beta","kappa"),
-                                method="parallel",
-                                sample = 5000, adapt =1000, burnin = 1000, thin = 1,
-                                #sample = 30000, adapt =4000, burnin = 4000, thin = 2,
-                                n.chains = 2, inits = inits_list,
-                                summarise = FALSE)
+  Combined_finaltestd<- run.jags(textstring, data = dataListcomb,
+                     monitor = c("ww_pred","cases_pred","log10_conc_all",
+                                 "E0","P0","A10","I10",
+                                 "log10_conc","mu_nb",
+                                 "P_total", "A_total", "I_total",
+                                 "shed_P", "shed_A", "shed_I","mult","log_mult",
+                                 "tau_ww","transit_time_mean","transit_time_cv",
+                                 "beta","kappa","phi",
+                                 "total_Cuminc", "active_infected","total_lambda",
+                                 "report_frac","Vea","Veb","m",
+                                 "delta_inv","theta_invall","omega_invall"),
+                     method="parallel",
+                     #sample = 2000, adapt =500, burnin = 500, thin = 1,
+                     sample = 15000, adapt =4000, burnin = 4000, thin = 2,
+                     n.chains = 2, inits = inits_list,
+                     summarise = FALSE)
 })
 
 
-Combined_finaltestb<- as.mcmc.list(Combined_finaltestb)
-save(Combined_finaltestb,file="D:/mpox25output/Combined_finaltestb.RData")
+Comb_finaltestd<- as.mcmc.list(Combined_finaltestd)
+save(Comb_finaltestd,file="U:/mpox25output/Comb_finaltestd.RData")
 
 ############generate output
-load(file="D:/mpox25output/Combined_finaltestb.RData")
+load(file="U:/mpox25output/Comb_finaltestc.RData")
 ###generate traceplots
-traceplot(Combined_finaltestb[, "transit_time_mean"],main="Mean transit time in sewer")
-traceplot(Combined_finaltestb[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Combined_finaltestb[, "mult"],main="Scaling factor of viral load")
-traceplot(Combined_finaltestb[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Combined_finaltestb[, "beta"],main="Transmission parameter")
+traceplot(Comb_finaltestc[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Comb_finaltestc[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(Comb_finaltestc[, "mult"],main="Scaling factor of viral load")
+traceplot(Comb_finaltestc[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Comb_finaltestc[, "beta"],main="Transmission parameter")
 traceplot(Comblist_finald[, "kappa"],main="Mixing probability")
 traceplot(Comblist_finald[, "phi"],main="Negative binomial dispersion parmeter")
-traceplot(Comblist_finald[, "report_frac"],main="reporting fraction")
+traceplot(Comb_finaltestc[, "report_frac"],main="reporting fraction")
 traceplot(Comblist_finald[, "m"],main="Proportion of Asymptomatic fraction")
 
 #####extract samples for plotting

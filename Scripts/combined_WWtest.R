@@ -56,7 +56,7 @@ model {
   log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 0.25)
+  transit_time_mean ~ dnorm(2.5, 0.25) T(0.1, 10)
   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
 
@@ -737,15 +737,15 @@ system.time({
                                       "delta_inv","theta_invall","omega_invall"),
                           method="parallel",
                           #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                          sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                          sample = 15000, adapt =4000, burnin = 4000, thin = 2,
                           n.chains = 2, inits = inits_list,
                           summarise = FALSE)
 })
 
 
 
-Comb_WWtestc<- as.mcmc.list(Combined_WWtest)
-save(Comb_WWtestc,file="U:/mpox25output/Comb_WWtestc.RData")
+Comb_WWtestd<- as.mcmc.list(Combined_WWtest)
+save(Comb_WWtestd,file="U:/mpox25output/Comb_WWtestd.RData")
 
 ###load data#############
 load(file="U:/mpox25output/Comb_WWtestc.RData")

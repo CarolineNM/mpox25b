@@ -44,7 +44,7 @@ model {
   log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 0.25)
+  transit_time_mean ~ dnorm(2.5, 0.25) T(0.1, 10)
   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
    
@@ -731,37 +731,37 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_castestb<- run.jags(textstring, data = dataListcomb,
+  Combined_castestc<- run.jags(textstring, data = dataListcomb,
                              monitor = c("log10_conc","cases_pred","mu_nb","mult","log_mult",
                                          "P_total","A_total", "I_total","ww_pred","tau_ww",
                                          "shed_P","shed_A","shed_I",
-                                         "transit_time_mean",
+                                         "transit_time_mean","transit_time_cv",
                                          "beta","kappa","phi",
                                          "total_Cuminc", "active_infected","total_lambda",
                                          "report_frac","Vea","Veb","m",
                                          "delta_inv","theta_invall","omega_invall"),
                              method="parallel",
                              #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                             sample = 30000, adapt =4000, burnin = 4000, thin = 2,
+                             sample = 15000, adapt =4000, burnin = 4000, thin = 2,
                              n.chains = 2, inits = inits_list,
                              summarise = FALSE)
 })
 
-Combined_castestb<- as.mcmc.list(Combined_castestb)
-save(Combined_castestb,file="U:/mpox25output/Combined_castestb.RData")
+Combined_castestc<- as.mcmc.list(Combined_castestc)
+save(Combined_castestc,file="U:/mpox25output/Combined_castestc.RData")
 
 ############generate output
-load(file="U:/mpox25output/Combined_castest.RData")
+load(file="U:/mpox25output/Combined_castestb.RData")
 ###generate traceplots
-traceplot(Combined_castest[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Combined_castestb[, "transit_time_mean"],main="Mean transit time in sewer")
 #traceplot(Combined_castest[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Combined_castest[, "mult"],main="Scaling factor of viral load")
-traceplot(Combined_castest[, "tau_ww"],main="Precision of the dnorm likelihood")
-traceplot(Combined_castest[, "beta"],main="Transmission parameter")
-traceplot(Combined_castest[, "kappa"],main="Mixing probability")
-traceplot(Combined_castest[, "phi"],main="Negative binomial dispersion parmeter")
-traceplot(Combined_castest[, "report_frac"],main="reporting fraction")
-traceplot(Combined_castest[, "m"],main="Proportion of Asymptomatic fraction")
+traceplot(Combined_castestb[, "mult"],main="Scaling factor of viral load")
+traceplot(Combined_castestb[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Combined_castestb[, "beta"],main="Transmission parameter")
+traceplot(Combined_castestb[, "kappa"],main="Mixing probability")
+traceplot(Combined_castestb[, "phi"],main="Negative binomial dispersion parmeter")
+traceplot(Combined_castestb[, "report_frac"],main="reporting fraction")
+traceplot(Combined_castestb[, "m"],main="Proportion of Asymptomatic fraction")
 
 
 ############generate outputs
