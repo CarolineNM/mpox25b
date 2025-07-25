@@ -623,22 +623,6 @@ plota=ggplot(beta_df_all %>% filter(parameter %in% WW_params),
   )
 plota
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ###############plot the relative contribution to the total viral load
 ###To repeat this with new runs#####
 ###extract first

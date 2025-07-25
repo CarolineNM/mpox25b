@@ -608,10 +608,11 @@ mysimulate_model <- function(params, init, contact, N, T, vax_scenario = "baseli
   ))
 }
 
+#E0;9[4-14]#P0;2[0-5]#A10;2[0-5]#I10;2[0-5]   
 ###Estimated initials from Negb25estimates_inits######
 #E0=8(3-14);P0<-2(0-5);A10<-1(0-3);I10<-2(0-6)
 ###We used the median estimates from the above values to generate new initial conditions
-E_start <- 8 * Norm_contact_dy;P_start <- 2* Norm_contact_dy;A1_start <- 1* Norm_contact_dy;I1_start <- 2* Norm_contact_dy
+E_start <- 14 * Norm_contact_dy;P_start <- 5* Norm_contact_dy;A1_start <- 5* Norm_contact_dy;I1_start <- 5* Norm_contact_dy
 A2_start=c(0,0,0);A3_start=c(0,0,0);I2_start=c(0,0,0);I3_start=c(0,0,0);R_start=c(0,0,0);Cuminc_start=c(0,0,0)
 S_start <- N - (E_start + P_start + A1_start + I1_start)
 #####initials for vaccinated grps va
@@ -706,8 +707,6 @@ sim_result_novax <- mysimulate_model(
 )
 
 sim_result_novax
-
-
 
 sim_reducedshed <- mysimulate_model(
   params = params,
@@ -830,7 +829,7 @@ for (i in seq_along(draw_indices)) {
   I_total_baseline[i, , ] <- sim_rbaseline$I_total
 }
 
-all_sim_resultsb <- list(
+all_sim_resultse <- list(
   baseline = list(
     cases = cases_baseline,
     vload = vload_baseline,
@@ -872,14 +871,14 @@ all_sim_resultsb <- list(
   )
 )
 
-saveRDS(all_sim_resultsb$baseline, "D:/Mpoxoutputb/baseline_resultsb.rds")
-saveRDS(all_sim_resultsb$no_vax, "D:/Mpoxoutputb/novax_resultsb.rds")
-saveRDS(all_sim_resultsb$reduced_shedding, "D:/Mpoxoutputb/reducedshed_resultsb.rds")
+saveRDS(all_sim_resultse$baseline, "D:/Mpoxoutputb/baseline_resultse.rds")
+saveRDS(all_sim_resultse$no_vax, "D:/Mpoxoutputb/novax_resultse.rds")
+saveRDS(all_sim_resultse$reduced_shedding, "D:/Mpoxoutputb/reducedshed_resultse.rds")
 
 
-baseline <- readRDS("D:/Mpoxoutputb/baseline_resultsb.rds")
-novax <- readRDS("D:/Mpoxoutputb/novax_resultsb.rds")
-reducedshed <- readRDS("D:/Mpoxoutputb/reducedshed_resultsb.rds")
+baseline <- readRDS("D:/Mpoxoutputb/baseline_resultse.rds")
+novax <- readRDS("D:/Mpoxoutputb/novax_resultse.rds")
+reducedshed <- readRDS("D:/Mpoxoutputb/reducedshed_resultse.rds")
 
 ##########we now compute credible intervals############
 summary_quantiles <- function(mat) {
@@ -993,8 +992,6 @@ plot_prev_df <- bind_rows(prev_df_novax, prev_df_baseline )
 plot_cuminc_df <- bind_rows(cuminc_df_novax, cuminc_df_baseline)
 plot_vload_sampled <- bind_rows(vload_sampled_novax,vload_sampled_baseline)
 
-
-
 ###########Now we generate plots for these plots
 plot_sim_output <- function(data, ylab, title, log_y = FALSE) {
   ggplot(data, aes(x = Date, y = median, color = scenario, fill = scenario)) +
@@ -1021,12 +1018,12 @@ p_prev <- plot_sim_output(plot_prev_df, ylab = "Prevalence", title = "Simulated 
 p_cuminc <- plot_sim_output(plot_cuminc_df, ylab = "Cumulative incidence", title = "Simulated Cumulative Incidence")
 
 
-dd=p_cases+p_vload_sampled+plot_layout(guides = "collect") & theme(legend.position = "bottom")
-dd
+bb=p_cases+p_vload_sampled+plot_layout(guides = "collect") & theme(legend.position = "bottom")
+bb
 
 ggsave(
-  filename = "D:/Mpox25output/Figures/plotfit.tiff",
-  plot = dd,  # use your actual plot variable here
+  filename = "D:/Mpox25output/Figures/simfit.tiff",
+  plot = bb,  # use your actual plot variable here
   width = 10,
   height = 5,
   dpi = 300,
@@ -1094,6 +1091,14 @@ shedred_df <- summarise_relative_shedding_array(
 #relg_all <- dplyr::bind_rows(baseline_df, novax_df, shedred_df)
 relg_all <- dplyr::bind_rows(baseline_df, novax_df)
 
+relg_all_trimmed <- relg_all %>%
+  group_by(group, scenario) %>%
+  arrange(time) %>%
+  slice(-(1:30)) %>%  # Remove first 30 rows per group-scenario combo
+  mutate(time = row_number(),
+         Date=case_dat$Date) %>% 
+  ungroup()
+
 my_colors <- c(
   "Group 1 (low activity)" = "#F8766D",
   "Group 2 (medium activity)" = "#00BA38",
@@ -1101,12 +1106,12 @@ my_colors <- c(
 )
 
 plot_shedding_contributions <- function(shed_summary_df) {
-  ggplot(shed_summary_df, aes(x = time, y = median, fill = group, color = group)) +
+  ggplot(shed_summary_df, aes(x = Date, y = median, fill = group, color = group)) +
     geom_line(size = 1) +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
     facet_wrap(~ scenario, ncol = 1) +
     labs(
-      title = "Relative Contribution to Shedding by Sexual Activity Group",
+      #title = "Relative Contribution to Shedding by Sexual Activity Group",
       x = "Time (days)",
       y = "Proportion of Total Viral Shedding"
     ) +
@@ -1122,101 +1127,8 @@ plot_shedding_contributions <- function(shed_summary_df) {
 }
 
 # Plot
-shedplot=plot_shedding_contributions(relg_all)
-
-shedP_1 <- baseline$shed_P[, 1, ]  # shape: [draw, time]
-shedP_2 <- baseline$shed_P[, 2, ]
-shedP_3 <- baseline$shed_P[, 3, ]
-
-shedA_1 <- baseline$shed_A[, 1, ]
-shedA_2 <- baseline$shed_A[, 2, ]
-shedA_3 <- baseline$shed_A[, 3, ]
-
-shedI_1 <- baseline$shed_I[, 1, ]
-shedI_2 <- baseline$shed_I[, 2, ]
-shedI_3 <- baseline$shed_I[, 3, ]
-
-# Total per group
-shed1_total <- shedP_1 + shedA_1 + shedI_1
-shed2_total <- shedP_2 + shedA_2 + shedI_2
-shed3_total <- shedP_3 + shedA_3 + shedI_3
-
-shedall_total <- shed1_total + shed2_total + shed3_total
-
-relg_1 <- shed1_total / shedall_total
-relg_2 <- shed2_total / shedall_total
-relg_3 <- shed3_total / shedall_total
-
-burn_in <- 30
-
-# Remove first 30 timesteps from each matrix
-relg_1_burned <- relg_1[, (burn_in+1):ncol(relg_1)]
-relg_2_burned <- relg_2[, (burn_in+1):ncol(relg_2)]
-relg_3_burned <- relg_3[, (burn_in+1):ncol(relg_3)]
-
-# Function to summarize posterior samples over time
-summary_rel_group <- function(mat, group_label) {
-  data.frame(
-    time = 1:ncol(mat),
-    Date=case_dat$Date,# time index
-    median = apply(mat, 2, median, na.rm = TRUE),
-    lower = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
-    upper = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
-    group = group_label
-  )
-}
-
-
-# Combine summaries for plotting
-relg_all <- dplyr::bind_rows(
-  summary_rel_group(relg_1_burned, "Group 1 (low activity)"),
-  summary_rel_group(relg_2_burned, "Group 2 (medium activity)"),
-  summary_rel_group(relg_3_burned, "Group 3 (high activity)")
-)
-
-plotshed=ggplot(relg_all, aes(x = time, y = median, fill = group, color = group)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, linetype = 0) +
-  labs(
-    title = "Relative contribution to shedding by sexual activity group(simulation)",
-    x = "Time",
-    y = "Proportion of viral load shed"
-  ) +
-  theme_minimal() +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme(legend.position = "bottom")
-
-plotshed
-
-
-# Mean symptomatic shedding per group over time
-mean_shed_I_by_group <- apply(baseline$shed_I, c(2,3), mean)  # [group, time]
-
-matplot(t(mean_shed_I_by_group), type = "l", lty = 1, col = c("red", "green", "blue"),
-        ylab = "Mean symptomatic shedding by group", xlab = "Time")
-legend("topright", legend = c("Group 1", "Group 2", "Group 3"),
-       col = c("red", "green", "blue"), lty = 1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+shedplot=plot_shedding_contributions(relg_all_trimmed)
+shedplot
 
 ###########Number of infectious people per group#############
 # Function to summarize total infectious individuals per group
@@ -1255,15 +1167,14 @@ infect_summary_novax <- summarise_total_infectious(
 ) %>%
   dplyr::mutate(scenario = "No vaccination")
 
-infect_summary_reduced <- summarise_total_infectious(
-  reducedshed$P_total, reducedshed$A_total, reducedshed$I_total
-) %>%
-  dplyr::mutate(scenario = "Reduced shedding")
+# infect_summary_reduced <- summarise_total_infectious(
+#   reducedshed$P_total, reducedshed$A_total, reducedshed$I_total
+# ) %>%
+#   dplyr::mutate(scenario = "Reduced shedding")
 
 
 # Combine all
-infect_all <- bind_rows(infect_summary_baseline, infect_summary_novax, infect_summary_reduced)
-
+infect_all <- bind_rows(infect_summary_baseline, infect_summary_novax)
 
 Infectionsplot <- ggplot(infect_all, aes(x = time, y = median, color = group, fill = group)) +
   geom_line(size = 1) +
@@ -1272,7 +1183,7 @@ Infectionsplot <- ggplot(infect_all, aes(x = time, y = median, color = group, fi
   labs(
     x = "Time (days)",
     y = "Number of Infectious Individuals",
-    title = "Number of Infectious Individuals by Sexual Activity Group"
+    #title = "Number of Infectious Individuals by Sexual Activity Group"
   ) +
   scale_fill_manual(values = my_colors) +
   scale_color_manual(values = my_colors) +
@@ -1283,13 +1194,23 @@ Infectionsplot <- ggplot(infect_all, aes(x = time, y = median, color = group, fi
     plot.title = element_text(hjust = 0.5, face = "bold")
   )
 
+ShedInf_plot <- plot_shedding_contributions(relg_all_trimmed) | Infectionsplot
+pp=ShedInf_plot + plot_layout(guides = "collect") & theme(legend.position = "bottom")
 
-ShedInf_plot <- plot_shedding_contributions(relg_all) | Infectionsplot
-ShedInf_plot + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+ggsave(
+  filename = "D:/Mpox25output/Figures/simshed.tiff",
+  plot = pp,  # use your actual plot variable here
+  width = 12,
+  height = 7,
+  dpi = 300,
+  units = "in",
+  device = "tiff",
+  compression = "lzw"
+)
 
  #################Contribution to viral load by compartment##########################
 # Combine P, A, I compartments and remove burn-in
-summarise_rel_shedding <- function(shed_P, shed_A, shed_I, scenario_name = "Scenario", burn_in = 30) {
+summarise_rel_shedding <- function(shed_P, shed_A, shed_I, scenario_name = "Scenario", burn_in = 30, date = NULL) {
   # Check input shape
   stopifnot(length(dim(shed_P)) == 3)
   
@@ -1313,13 +1234,18 @@ summarise_rel_shedding <- function(shed_P, shed_A, shed_I, scenario_name = "Scen
   
   # Summary helper
   summary_rel <- function(mat, source_label) {
-    data.frame(
+    df <- data.frame(
       time = seq_len(ncol(mat)),  # Start from 1 after burn-in
       median = apply(mat, 2, median, na.rm = TRUE),
       lower = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
       upper = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
       source = source_label
     )
+    if (!is.null(date)) {
+      if (length(date) != ncol(mat)) stop("Length of `date` must match number of timepoints after burn-in")
+      df$date <- date
+    }
+    return(df)
   }
   
   # Combine summaries
@@ -1333,103 +1259,134 @@ summarise_rel_shedding <- function(shed_P, shed_A, shed_I, scenario_name = "Scen
   return(summary_df)
 }
 
-summarise_infected <- function(P_mat, A_mat, I_mat, scenario_label, burn_in = 30) {
-  # Apply burn-in
-  P_mat <- P_mat[, (burn_in + 1):ncol(P_mat)]
-  A_mat <- A_mat[, (burn_in + 1):ncol(A_mat)]
-  I_mat <- I_mat[, (burn_in + 1):ncol(I_mat)]
-  
-  # Summary helper function
-  summarise_draws <- function(mat, group_label) {
-    data.frame(
-      time = seq_len(ncol(mat)),  # Reset time to start at 1
-      median = apply(mat, 2, median, na.rm = TRUE),
-      lower = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
-      upper = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
-      group = group_label,
-      scenario = scenario_label
-    )
-  }
-  
-  # Combine summaries
-  dplyr::bind_rows(
-    summarise_draws(P_mat, "Pre-symptomatic"),
-    summarise_draws(A_mat, "Asymptomatic"),
-    summarise_draws(I_mat, "Symptomatic")
-  )
-}
-
-
-
 # Relative shedding by clinical compartment
 rel_shedding_baseline <- summarise_rel_shedding(
-  baseline$shed_P, baseline$shed_A, baseline$shed_I, "Baseline"
+  baseline$shed_P, baseline$shed_A, baseline$shed_I, "Baseline",date = case_dat$Date
 )
 
 rel_shedding_novax <- summarise_rel_shedding(
-  novax$shed_P, novax$shed_A, novax$shed_I, "No vaccination"
+  novax$shed_P, novax$shed_A, novax$shed_I, "No vaccination",date = case_dat$Date
 )
 
 rel_shedding_reduced <- summarise_rel_shedding(
-  reducedshed$shed_P, reducedshed$shed_A, reducedshed$shed_I, "Reduced shedding"
+  reducedshed$shed_P, reducedshed$shed_A, reducedshed$shed_I, "Reduced shedding",date = case_dat$Date
 )
+
+summarise_abs_infected <- function(P_mat, A_mat, I_mat, scenario_name = "Scenario", burn_in = 30, date = NULL) {
+  stopifnot(length(dim(P_mat)) == 3)
+  
+  # Collapse across groups: [draw, time]
+  P_total <- apply(P_mat, c(1, 3), sum)
+  A_total <- apply(A_mat, c(1, 3), sum)
+  I_total <- apply(I_mat, c(1, 3), sum)
+  
+  # Remove burn-in
+  P_total <- P_total[, (burn_in + 1):ncol(P_total)]
+  A_total <- A_total[, (burn_in + 1):ncol(A_total)]
+  I_total <- I_total[, (burn_in + 1):ncol(I_total)]
+  
+  # Summary helper
+  summarise_draws <- function(mat, comp_label) {
+    df <- data.frame(
+      time = seq_len(ncol(mat)),
+      median = apply(mat, 2, median, na.rm = TRUE),
+      lower = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
+      upper = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
+      compartment = comp_label
+    )
+    if (!is.null(date)) {
+      if (length(date) != ncol(mat)) stop("Length of `date` must match number of timepoints after burn-in")
+      df$date <- date
+    }
+    return(df)
+  }
+  
+  # Combine summaries
+  summary_df <- dplyr::bind_rows(
+    summarise_draws(P_total, "Pre-symptomatic (P)"),
+    summarise_draws(A_total, "Asymptomatic (A)"),
+    summarise_draws(I_total, "Symptomatic (I)")
+  ) %>%
+    dplyr::mutate(scenario = scenario_name)
+  
+  return(summary_df)
+}
 
 # Total number of infected individuals by clinical compartment
-infected_baseline <- summarise_infected(
-  baseline$P_total, baseline$A_total, baseline$I_total, "Baseline"
+infected_baseline <- summarise_abs_infected(
+  baseline$P_total, baseline$A_total, baseline$I_total, "Baseline",date = case_dat$Date
 )
 
-infected_novax <- summarise_infected(
-  novax$P_total, novax$A_total, novax$I_total, "No vaccination"
+infected_novax <- summarise_abs_infected(
+  novax$P_total, novax$A_total, novax$I_total, "No vaccination",date = case_dat$Date
 )
 
-infected_reduced <- summarise_infected(
-  reducedshed$P_total, reducedshed$A_total, reducedshed$I_total, "Reduced shedding"
+infected_reduced <- summarise_abs_infected(
+  reducedshed$P_total, reducedshed$A_total, reducedshed$I_total, "Reduced shedding",date = case_dat$Date
 )
 
 # Combine all scenarios
 rel_shedding_all <- dplyr::bind_rows(
-  rel_shedding_baseline, rel_shedding_novax, rel_shedding_reduced
-)
+  rel_shedding_baseline, rel_shedding_novax)
 
 infected_all <- dplyr::bind_rows(
-  infected_baseline, infected_novax, infected_reduced
-)
+  infected_baseline, infected_novax)
 
-
-# Infection stages
-ggplot(infected_all, aes(x = time, y = median, fill = group, color = group)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
-  facet_wrap(~scenario, ncol = 1) +
+plotrelcom=ggplot(rel_shedding_all, aes(x = date, y = median*100, fill = source)) +
+  geom_ribbon(aes(ymin = lower*100, ymax = upper*100), alpha = 0.2, color = NA) +
+  geom_line(aes(color = source), size = 1) +
+  facet_wrap(~scenario)+
   labs(
-    x = "Time (days)",
-    y = "Number of infectious individuals",
-    title = "Number of infectious individuals by infection stage"
-  ) +
-  scale_fill_manual(values = c("Pre-symptomatic" = "#A6CEE3", "Asymptomatic" = "#FDBF6F", "Symptomatic" = "#E31A1C")) +
-  scale_color_manual(values = c("Pre-symptomatic" = "#1F78B4", "Asymptomatic" = "#FDBF6F", "Symptomatic" = "#E31A1C")) +
-  theme_minimal(base_size = 14)
-
-# Relative shedding contributions
-ggplot(rel_shedding_all, aes(x = time, y = median, fill = source, color = source)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
-  facet_wrap(~scenario, ncol = 1) +
-  labs(
-    x = "Time (days)",
-    y = "Proportion of total viral load",
+    x = "Date", y = "Proportion of total viral load (%)",
     title = "Relative contribution to viral shedding by infection stage"
   ) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  scale_fill_manual(values = c("Pre-symptomatic (P)" = "#A6CEE3", "Asymptomatic (A)" = "#FDBF6F", "Symptomatic (I)" = "#FB9A99")) +
-  scale_color_manual(values = c("Pre-symptomatic (P)" = "#1F78B4", "Asymptomatic (A)" = "#FDBF6F", "Symptomatic (I)" = "#E31A1C")) +
-  theme_minimal(base_size = 14)
+  scale_fill_manual(values = c("Pre-symptomatic (P)" = "skyblue",
+                               "Asymptomatic (A)" = "orange",
+                               "Symptomatic (I)" = "red")) +
+  scale_color_manual(values = c("Pre-symptomatic (P)" = "skyblue",
+                                "Asymptomatic (A)" = "orange",
+                                "Symptomatic (I)" = "red")) +
+  theme_minimal(base_size = 10) +
+  theme(legend.title = element_blank())
 
+plotinfected <- ggplot(infected_all, aes(x = date, y = median, fill = compartment)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, color = NA) +
+  geom_line(aes(color = compartment), size = 1) +
+  facet_wrap(~scenario) +
+  labs(
+    x = "Date",
+    y = "Total number of infected individuals",
+    title = "Number of infected individuals by clinical stage with 95% CrI"
+  ) +
+  scale_fill_manual(values = c(
+    "Pre-symptomatic (P)" = "skyblue",
+    "Asymptomatic (A)" = "orange",
+    "Symptomatic (I)" = "red"
+  )) +
+  scale_color_manual(values = c(
+    "Pre-symptomatic (P)" = "skyblue",
+    "Asymptomatic (A)" = "orange",
+    "Symptomatic (I)" = "red"
+  )) +
+  theme_minimal(base_size = 10) +
+  theme(legend.title = element_blank())
 
+combined_plot <- plotrelcom / plotinfected + 
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")
 
+ggsave(
+  filename = "D:/Mpox25output/Figures/simshedcomp.tiff",
+  plot = combined_plot,  # use your actual plot variable here
+  width = 12,
+  height = 7,
+  dpi = 300,
+  units = "in",
+  device = "tiff",
+  compression = "lzw"
+)
 
-
+############sliding window correlation plot####################
 # 1. Drop burn-in if needed
 burn_in <- 30
 cases_postburn <- cases_all[, (burn_in + 1):ncol(cases_all)]
@@ -1529,155 +1486,6 @@ max_y_novax <- max(c(cases_novac$upper, viral_novac$upper), na.rm = TRUE)
 df_novac <- rbind(cases_dfvac,ww_dfvac)
 
 ###############generate summaries for baseline scenario########################
-
-#############plot relative contribution to viral load by sexual activity group############
-# Extract matrices for each group
-shedP_1 <- as.matrix(Comblist_finalg[, grep("shed_P\\[1,", varnames(Comblist_finalg))])
-shedP_2 <- as.matrix(Comblist_finalg[, grep("shed_P\\[2,", varnames(Comblist_finalg))])
-shedP_3 <- as.matrix(Comblist_finalg[, grep("shed_P\\[3,", varnames(Comblist_finalg))])
-
-shedA_1 <- as.matrix(Comblist_finalg[, grep("shed_A\\[1,", varnames(Comblist_finalg))])
-shedA_2 <- as.matrix(Comblist_finalg[, grep("shed_A\\[2,", varnames(Comblist_finalg))])
-shedA_3 <- as.matrix(Comblist_finalg[, grep("shed_A\\[3,", varnames(Comblist_finalg))])
-
-shedI_1 <- as.matrix(Comblist_finalg[, grep("shed_I\\[1,", varnames(Comblist_finalg))])
-shedI_2 <- as.matrix(Comblist_finalg[, grep("shed_I\\[2,", varnames(Comblist_finalg))])
-shedI_3 <- as.matrix(Comblist_finalg[, grep("shed_I\\[3,", varnames(Comblist_finalg))])
-
-
-# Total shedding for each group (denominator)
-shed1_total <- shedP_1 + shedA_1 + shedI_1
-shed2_total <- shedP_2 + shedA_2 + shedI_2
-shed3_total <- shedP_3 + shedA_3 + shedI_3
-shedall_total <- shed1_total + shed2_total + shed3_total
-
-
-# Relative contribution of each group
-relg_1 <- shed1_total / shedall_total
-relg_2 <- shed2_total/ shedall_total
-relg_3 <- shed3_total / shedall_total
-
-# Function to summarize posterior samples over time
-summary_rel_group <- function(mat, group_label) {
-  data.frame(
-    time = 1:ncol(mat),
-    median_fit = apply(mat, 2, median, na.rm = TRUE),
-    lower_ci = apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE),
-    upper_ci = apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE),
-    group = group_label
-  )
-}
-
-# Combine summaries for plotting
-relg_all <- dplyr::bind_rows(
-  summary_rel_group(relg_1, "Group 1 (low activity)"),
-  summary_rel_group(relg_2, "Group 2 (medium activity)"),
-  summary_rel_group(relg_3, "Group 3 (high activity)")
-)
-
-baseline_rel<-relg_all %>% select(time,group,median_fit,lower_ci,upper_ci)
-rownames(baseline_rel) <- NULL
-
-baseline_rel_trimmed <- baseline_rel %>%
-  group_by(group) %>%
-  slice(-(1:30)) %>%
-  mutate(time = row_number()) %>%
-  ungroup()
-
-
-P1_total <- as.matrix(Comblist_finalg[, grep("P_total\\[1,", varnames(Comblist_finalg))])
-P2_total <- as.matrix(Comblist_finalg[, grep("P_total\\[2,", varnames(Comblist_finalg))])
-P3_total <- as.matrix(Comblist_finalg[, grep("P_total\\[3,", varnames(Comblist_finalg))])
-
-A1_total <- as.matrix(Comblist_finalg[, grep("A_total\\[1,", varnames(Comblist_finalg))])
-A2_total <- as.matrix(Comblist_finalg[, grep("A_total\\[2,", varnames(Comblist_finalg))])
-A3_total <- as.matrix(Comblist_finalg[, grep("A_total\\[3,", varnames(Comblist_finalg))])
-
-I1_total <- as.matrix(Comblist_finalg[, grep("I_total\\[1,", varnames(Comblist_finalg))])
-I2_total <- as.matrix(Comblist_finalg[, grep("I_total\\[2,", varnames(Comblist_finalg))])
-I3_total <- as.matrix(Comblist_finalg[, grep("I_total\\[3,", varnames(Comblist_finalg))])
-
-# Sum across compartments per group
-infected_1 <- P1_total + A1_total + I1_total
-infected_2 <- P2_total + A2_total + I2_total
-infected_3 <- P3_total + A3_total + I3_total
-
-# Summary function for CrI and median over time
-summarise_draws <- function(mat, group_label) {
-  data.frame(
-    time = 1:ncol(mat),
-    median_fit = apply(mat, 2, median),
-    lower_ci = apply(mat, 2, quantile, probs = 0.025),
-    upper_ci = apply(mat, 2, quantile, probs = 0.975),
-    group = group_label
-  )
-}
-
-# Apply summarization
-infected_df <- bind_rows(
-  summarise_draws(infected_1, "Group 1 (low activity)"),
-  summarise_draws(infected_2, "Group 2 (medium activity)"),
-  summarise_draws(infected_3, "Group 3 (high activity)")
-)
-
-rownames(infected_df) <- NULL
-
-infected_df_trimmed <- infected_df %>%
-  group_by(group) %>%
-  slice(-(1:30)) %>%
-  mutate(time = row_number()) %>%
-  ungroup()
-
-############Shedding by compartment############
-
-shedP_1 <- as.matrix(Comblist_finalg[, grep("shed_P\\[1,", varnames(Comblist_finalg))])
-shedP_2 <- as.matrix(Comblist_finalg[, grep("shed_P\\[2,", varnames(Comblist_finalg))])
-shedP_3 <- as.matrix(Comblist_finalg[, grep("shed_P\\[3,", varnames(Comblist_finalg))])
-
-shedA_1 <- as.matrix(Comblist_finalg[, grep("shed_A\\[1,", varnames(Comblist_finalg))])
-shedA_2 <- as.matrix(Comblist_finalg[, grep("shed_A\\[2,", varnames(Comblist_finalg))])
-shedA_3 <- as.matrix(Comblist_finalg[, grep("shed_A\\[3,", varnames(Comblist_finalg))])
-
-shedI_1 <- as.matrix(Comblist_finalg[, grep("shed_I\\[1,", varnames(Comblist_finalg))])
-shedI_2 <- as.matrix(Comblist_finalg[, grep("shed_I\\[2,", varnames(Comblist_finalg))])
-shedI_3 <- as.matrix(Comblist_finalg[, grep("shed_I\\[3,", varnames(Comblist_finalg))])
-
-
-# Total shedding across all groups (denominator)
-shedP_total <- shedP_1 + shedP_2 + shedP_3
-shedA_total <- shedA_1 + shedA_2 + shedA_3
-shedI_total <- shedI_1 + shedI_2 + shedI_3
-shed_total <- shedP_total + shedA_total + shedI_total
-
-# Total shedding for each group (denominator)
-summary_rel <- function(mat, source_label) {
-  data.frame(
-    time = 1:ncol(mat),
-    median_fit = apply(mat, 2, median),
-    lower_ci = apply(mat, 2, quantile, probs = 0.025),
-    upper_ci = apply(mat, 2, quantile, probs = 0.975),
-    comp = source_label
-  )
-}
-
-relcom_P=shedP_total/shed_total
-relcom_A=shedA_total/shed_total
-relcom_I=shedI_total/shed_total
-
-rel_com_all <- bind_rows(
-  summary_rel(relcom_P, "Pre-symptomatic (P)"),
-  summary_rel(relcom_A, "Asymptomatic (A)"),
-  summary_rel(relcom_I, "Symptomatic (I)")
-)
-
-rownames(rel_com_all)<- NULL
-
-relcom_df_trimmed <- rel_com_all %>%
-  group_by(comp) %>%
-  slice(-(1:30)) %>%
-  mutate(time = row_number()) %>%
-  ungroup()
-
 ##########correlation plot##########
 ww_mat <- mcmc_matrixallcom[, grep("^log10_conc_all\\[", colnames(mcmc_matrixallcom))]
 case_mat <- mcmc_matrixallcom[, grep("^mu_nb\\[", colnames(mcmc_matrixallcom))]
@@ -1786,149 +1594,6 @@ plot_comparison <- function(df_baseline, df_counterfactual, y_label,title) {
      )
  }
  
-
-p_cases=plot_comparison(plot_datcomcas, plot_datcasnovac, y_label = "Reported Mpox cases", title = "Reported cases: Baseline vs No vaccination")
-
-p_vload=plot_comparison(plot_datcomwwb, plot_datviralnovac, y_label = "Reported viral load",title = "Reported viral load: Baseline vs No vaccination")
-
-p_vloadb=plot_comparison(plot_datcomww, viral_sample, y_label = "Sampled viral load",title = "Sampled viral load: Baseline vs No vaccination")
-
-
-combined_plot <- p_cases + p_vloadb + 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")
-
-combined_plot
-
-
-plot_prev=plot_comparison(plot_comprev, plot_prevnovac, y_label = "Prevalence",title = "Prevalence: Baseline vs No vaccination")
-
-plot_cuminc=plot_comparison(plot_comCuminc, plot_cuminovac, y_label = "Cumulative incidence",title = "Cumulative incidence: Baseline vs No vaccination")
-
-
-combined2 <- plot_prev + plot_cuminc + 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")
-
-combined2
-
-
-plot_shedding_contribution <- function(df_baseline, df_counterfactual, title = "") {
-  df_baseline$scenario <- "Baseline"
-  df_counterfactual$scenario <- "No vaccination"
-  
-  df_combined <- bind_rows(df_baseline, df_counterfactual)
-  
-  ggplot(df_combined, aes(x = time, y = median_fit, color = group, fill = group)) +
-    geom_line(size = 1) +
-    geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.3) +
-    facet_wrap(~scenario) +  # Separate plots for baseline vs no vaccination
-    labs(
-      x = "Time (days)",
-      y = "Proportion of viral load shed",
-      title = title
-    ) +
-    scale_color_manual(
-      values = c(
-        "Group 1 (low activity)" = "red",
-        "Group 2 (medium activity)" = "green4",
-        "Group 3 (high activity)" = "steelblue"
-      )
-    ) +
-    scale_fill_manual(
-      values = c(
-        "Group 1 (low activity)" = "salmon",
-        "Group 2 (medium activity)" = "lightgreen",
-        "Group 3 (high activity)" = "lightblue"
-      )
-    ) +
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-    theme_minimal(base_size = 14) +
-    theme(
-      plot.title = element_text(face = "bold", hjust = 0.5),
-      legend.title = element_blank(),
-      strip.text = element_text(face = "bold")
-    )
-}
-shedding=plot_shedding_contribution(baseline_rel_trimmed, shed_summary,title = "Relative contribution to viral shedding")
-
-plot_group_contribution <- function(df_baseline, df_counterfactual, title = "") {
-  df_baseline$scenario <- "Baseline"
-  df_counterfactual$scenario <- "No vaccination"
-  
-  df_combined <- bind_rows(df_baseline, df_counterfactual)
-  
-  ggplot(df_combined, aes(x = time, y = median_fit, color = group, fill = group)) +
-    geom_line(size = 1) +
-    geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.3) +
-    facet_wrap(~scenario) +  # Separate plots for baseline vs no vaccination
-    labs(
-      x = "Time (days)",
-      y = "Number of infectious individuals",
-      title = title
-    ) +
-    scale_color_manual(
-      values = c(
-        "Group 1 (low activity)" = "red",
-        "Group 2 (medium activity)" = "green4",
-        "Group 3 (high activity)" = "steelblue"
-      )
-    ) +
-    scale_fill_manual(
-      values = c(
-        "Group 1 (low activity)" = "salmon",
-        "Group 2 (medium activity)" = "lightgreen",
-        "Group 3 (high activity)" = "lightblue"
-      )
-    ) +
-    theme_minimal(base_size = 14) +
-    theme(
-      plot.title = element_text(face = "bold", hjust = 0.5),
-      legend.title = element_blank(),
-      strip.text = element_text(face = "bold")
-    )
-}
-
-
-inf.No=plot_group_contribution(infected_df_trimmed, inf_summary,title = "Number of infectious individuals")
-
-combined3 <- shedding + inf.No + 
-  plot_layout(guides = "collect",nrow=2) & 
-  theme(legend.position = "bottom")
-
-combined3
-
-relcom_df_trimmed$scenario <- "Baseline"
-shed_comp_overall_summary$scenario <- "No vaccination"
-
-rel_com_all <- bind_rows(relcom_df_trimmed, shed_comp_overall_summary)
-
-
-plotrelcom <- ggplot(rel_com_all, aes(x = time, y = median_fit * 100, fill = comp)) +
-  geom_ribbon(aes(ymin = lower_ci * 100, ymax = upper_ci * 100), alpha = 0.2, color = NA) +
-  geom_line(aes(color = comp), size = 1) +
-  facet_wrap(~scenario, ncol = 2) +
-  labs(
-    x = "Time (days)",
-    y = "Proportion of total viral load (%)",
-    title = "Relative contribution to viral shedding with 95% CrI (All groups combined)"
-  ) +
-  scale_fill_manual(values = c(
-    "Pre-symptomatic (P)" = "skyblue",
-    "Asymptomatic (A)" = "orange",
-    "Symptomatic (I)" = "red"
-  )) +
-  scale_color_manual(values = c(
-    "Pre-symptomatic (P)" = "skyblue",
-    "Asymptomatic (A)" = "orange",
-    "Symptomatic (I)" = "red"
-  )) +
-  theme_minimal(base_size = 11) +
-  theme(
-    legend.title = element_blank(),
-    strip.text = element_text(face = "bold", size = 11)
-  )
-
 #################correlation plots###############
 # Add scenario labels
 summary_df$scenario <- "Baseline"
