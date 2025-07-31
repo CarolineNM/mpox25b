@@ -25,14 +25,14 @@ ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW dat
 ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
 
 #######load the three outputs
-load("U:/mpox25output/Comb_finaltestd.RData")
-load("U:/mpox25output/Comb_WWtestd.RData")
-load("U:/mpox25output/Combined_castestc.RData")
+load("U:/mpox25output/Comb_finaltestdd.RData")
+load("U:/mpox25output/Comb_WWtestdd.RData")
+load("U:/mpox25output/Combined_castestcc.RData")
 
 ######generate the model fit
-mcmc_matrixallWW<-as.matrix(Comb_WWtestd)
-mcmc_matrixallcas<-as.matrix(Combined_castestc) ###most recent version
-mcmc_matrixallcom<-as.matrix(Comb_finaltestd)
+mcmc_matrixallWW<-as.matrix(Comb_WWtestdd)
+mcmc_matrixallcas<-as.matrix(Combined_castestcc) ###most recent version
+mcmc_matrixallcom<-as.matrix(Comb_finaltestdd)
 
 # Function to compute the median and 95% credible interval
 summary_median_CI <- function(samples) {
@@ -486,9 +486,10 @@ ggsave(
 
 ###################Mraginal posterior plots##########
 ####################refine this######################
-case_mod  <- Combined_castestc
-ww_mod   <- Comb_WWtestd
-com_mod <- Comb_finaltestd
+case_mod  <- Combined_castestcc
+ww_mod   <- Comb_WWtestdd
+com_mod <- Comb_finaltestdd
+
 
 ###Define parameter to model mapping
 param_model_map <- list(
@@ -539,7 +540,8 @@ prior_definitions <- list(
   omega_invall=function(n) rgamma(n, shape = 20.6, rate = 1.45),
   Vea=function(n) rbeta(n, shape1 = 49.3, shape2 = 87.4),
   Veb=function(n) rbeta(n, shape1 = 69.3, shape2 = 35.6),
-  transit_time_mean = function(n) rtruncnorm(n, a = 0.1, b = 10, mean = 2.5, sd = sqrt(1 / 0.25)),
+  #transit_time_mean = function(n) rtruncnorm(n, a = 0.1, b = 10, mean = 2.5, sd = sqrt(1 / 0.25)),
+  transit_time_mean = function(n) rtruncnorm(n, a = 1, b = 5, mean = 2.5, sd = sqrt(1 / 0.25)),
   transit_time_cv = function(n) rtruncnorm(n, a = 0.1, b = 1, mean = 0.3, sd = sqrt(1 / 3)),
   mult = function(n) exp(rtruncnorm(n, a = log(1e-9), b = log(1e-8), mean = log(3e-9), sd = sqrt(1 / 2.5))),
   tau_ww = function(n) rgamma(n, shape = 40, rate = 48)
