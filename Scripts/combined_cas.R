@@ -44,7 +44,7 @@ model {
   log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 0.25) T(0.1, 10)
+  transit_time_mean ~ dnorm(2.5, 0.25) T(1, 5)
   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
    
@@ -747,8 +747,8 @@ system.time({
                              summarise = FALSE)
 })
 
-Combined_castestc<- as.mcmc.list(Combined_castestc)
-save(Combined_castestc,file="U:/mpox25output/Combined_castestc.RData")
+Combined_castestcc<- as.mcmc.list(Combined_castestc)
+save(Combined_castestcc,file="U:/mpox25output/Combined_castestcc.RData")
 
 ############generate output
 load(file="U:/mpox25output/Combined_castestb.RData")

@@ -55,7 +55,7 @@ model {
   log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 0.25) T(0.1, 10)
+  transit_time_mean ~ dnorm(2.5, 0.25) T(1, 5)
   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
 
@@ -713,8 +713,8 @@ system.time({
 })
 
 
-Comb_finaltestd<- as.mcmc.list(Combined_finaltestd)
-save(Comb_finaltestd,file="U:/mpox25output/Comb_finaltestd.RData")
+Comb_finaltestdd<- as.mcmc.list(Combined_finaltestd)
+save(Comb_finaltestdd,file="U:/mpox25output/Comb_finaltestdd.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comb_finaltestc.RData")
