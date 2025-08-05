@@ -44,7 +44,7 @@ model {
   log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 0.25) T(1, 5)
+  transit_time_mean ~ dnorm(2.5, 0.25) T(0.1, 10)
   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
    
@@ -731,7 +731,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_castestc<- run.jags(textstring, data = dataListcomb,
+  Combined_castestf<- run.jags(textstring, data = dataListcomb,
                              monitor = c("log10_conc","cases_pred","mu_nb","mult","log_mult",
                                          "P_total","A_total", "I_total","ww_pred","tau_ww",
                                          "shed_P","shed_A","shed_I",
@@ -742,21 +742,21 @@ system.time({
                                          "delta_inv","theta_invall","omega_invall"),
                              method="parallel",
                              #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                             sample = 15000, adapt =4000, burnin = 4000, thin = 2,
+                             sample = 20000, adapt =4000, burnin = 4000, thin = 2,
                              n.chains = 2, inits = inits_list,
                              summarise = FALSE)
 })
 
-Combined_castestcc<- as.mcmc.list(Combined_castestc)
-save(Combined_castestcc,file="U:/mpox25output/Combined_castestcc.RData")
+Comb_castestf<- as.mcmc.list( Combined_castestf)
+save(Comb_castestf,file="U:/mpox25output/Comb_castestf.RData")
 
 ############generate output
-load(file="U:/mpox25output/Combined_castestb.RData")
+load(file="U:/mpox25output/Combined_castestccc.RData")
 ###generate traceplots
-traceplot(Combined_castestb[, "transit_time_mean"],main="Mean transit time in sewer")
-#traceplot(Combined_castest[, "transit_time_cv"],main="Standard deviation of transit mean time")
-traceplot(Combined_castestb[, "mult"],main="Scaling factor of viral load")
-traceplot(Combined_castestb[, "tau_ww"],main="Precision of the dnorm likelihood")
+traceplot(Combined_castestccc[, "transit_time_mean"],main="Mean transit time in sewer")
+traceplot(Combined_castestccc[, "transit_time_cv"],main="Standard deviation of transit mean time")
+traceplot(Combined_castestccc[, "mult"],main="Scaling factor of viral load")
+traceplot(Combined_castestccc[, "tau_ww"],main="Precision of the dnorm likelihood")
 traceplot(Combined_castestb[, "beta"],main="Transmission parameter")
 traceplot(Combined_castestb[, "kappa"],main="Mixing probability")
 traceplot(Combined_castestb[, "phi"],main="Negative binomial dispersion parmeter")

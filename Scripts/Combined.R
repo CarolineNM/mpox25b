@@ -55,7 +55,7 @@ model {
   log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 0.25) T(1, 5)
+  transit_time_mean ~ dnorm(2.5, 0.25) T(0.1, 10)
   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
 
@@ -694,7 +694,7 @@ inits_list <- list(
 
 # #Run the model with different initial values for each chain
 system.time({
-  Combined_finaltestd<- run.jags(textstring, data = dataListcomb,
+  Combined_finaltestf<- run.jags(textstring, data = dataListcomb,
                      monitor = c("ww_pred","cases_pred","log10_conc_all",
                                  "E0","P0","A10","I10",
                                  "log10_conc","mu_nb",
@@ -707,14 +707,14 @@ system.time({
                                  "delta_inv","theta_invall","omega_invall"),
                      method="parallel",
                      #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                     sample = 15000, adapt =4000, burnin = 4000, thin = 2,
+                     sample = 20000, adapt =4000, burnin = 4000, thin = 2,
                      n.chains = 2, inits = inits_list,
                      summarise = FALSE)
 })
 
 
-Comb_finaltestdd<- as.mcmc.list(Combined_finaltestd)
-save(Comb_finaltestdd,file="U:/mpox25output/Comb_finaltestdd.RData")
+Comb_finaltestf<- as.mcmc.list( Combined_finaltestf)
+save(Comb_finaltestf,file="U:/mpox25output/Comb_finaltestf.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comb_finaltestc.RData")

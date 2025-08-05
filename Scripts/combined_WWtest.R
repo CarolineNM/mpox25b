@@ -56,7 +56,7 @@ model {
   log_mult ~ dnorm(log(3e-9), 2.5) T(log(1e-9), log(1e-8))
   mult <- exp(log_mult)
   tau_ww ~ dgamma(40, 48)
-  transit_time_mean ~ dnorm(2.5, 0.25) T(1, 5)
+  transit_time_mean ~ dnorm(2.5, 0.25) T(0.1, 10)
   transit_time_cv ~ dnorm(0.3, 3) T(0.1, 1)
    
 
@@ -725,7 +725,7 @@ inits_list <- list(
 
 # #Run the model with different initial values for each chain
 system.time({
-  Combined_WWtest<- run.jags(textstring, data = dataListcomb,
+  Combined_WWtestf<- run.jags(textstring, data = dataListcomb,
                           monitor = c("ww_pred","log10_conc_all","cases_pred",
                                       "log10_conc","mu_nb","phi",
                                       "P_total","A_total", "I_total","mult","log_mult",
@@ -737,15 +737,14 @@ system.time({
                                       "delta_inv","theta_invall","omega_invall"),
                           method="parallel",
                           #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                          sample = 15000, adapt =4000, burnin = 4000, thin = 2,
+                          sample = 20000, adapt =4000, burnin = 4000, thin = 2,
                           n.chains = 2, inits = inits_list,
                           summarise = FALSE)
 })
 
 
-
-Comb_WWtestdd<- as.mcmc.list(Combined_WWtest)
-save(Comb_WWtestdd,file="U:/mpox25output/Comb_WWtestdd.RData")
+Comb_WWtestf<- as.mcmc.list(Combined_WWtestf)
+save(Comb_WWtestf,file="U:/mpox25output/Comb_WWtestf.RData")
 
 ###load data#############
 load(file="U:/mpox25output/Comb_WWtestc.RData")
