@@ -731,7 +731,7 @@ inits_list <- list(
 
 #Run the model with different initial values for each chain
 system.time({
-  Combined_castestf<- run.jags(textstring, data = dataListcomb,
+  Combined_castestff<- run.jags(textstring, data = dataListcomb,
                              monitor = c("log10_conc","cases_pred","mu_nb","mult","log_mult",
                                          "P_total","A_total", "I_total","ww_pred","tau_ww",
                                          "shed_P","shed_A","shed_I",
@@ -742,13 +742,13 @@ system.time({
                                          "delta_inv","theta_invall","omega_invall"),
                              method="parallel",
                              #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                             sample = 20000, adapt =4000, burnin = 4000, thin = 2,
+                             sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                              n.chains = 2, inits = inits_list,
                              summarise = FALSE)
 })
 
-Comb_castestf<- as.mcmc.list( Combined_castestf)
-save(Comb_castestf,file="U:/mpox25output/Comb_castestf.RData")
+Comb_castestff<- as.mcmc.list( Combined_castestff)
+save(Comb_castestff,file="U:/mpox25output/Comb_castestff.RData")
 
 ############generate output
 load(file="U:/mpox25output/Combined_castestccc.RData")

@@ -222,6 +222,12 @@ total_lambda[1] <- sum(lambda_det[1:3, 1])
      active_infected[1] <- 0                  # Initial prevalence
      daily_shedding[1]<-0                     #Initial shed viral load
      
+     # Initial group-specific daily shedding at t = 1
+for (g in 1:3) {
+  daily_shedding_g[g, 1] <- 0
+}
+
+     
 
   # Dynamics of the model (deterministic-like)
   for (t in 2:T) {
@@ -409,6 +415,11 @@ total_lambda[1] <- sum(lambda_det[1:3, 1])
 # Total shedding across all groups (optional, if still needed)
 daily_shedding[t] <- sum(shed_P[1:3, t]) + sum(shed_A[1:3, t]) + sum(shed_I[1:3, t])
 
+# Group-specific daily shedding
+for (g in 1:3) {
+  daily_shedding_g[g, t] <- shed_P[g, t] + shed_A[g, t] + shed_I[g, t]
+}
+
 
   for (g in 1:3) {
   
@@ -448,6 +459,25 @@ for (t in 1:T) {
   delayed_conc[t] <- sum(contrib[1:tmax, t])
 }
 
+for (i in 1:tmax) {
+  g_kernel[i] <- (1 / (sigma * sqrt(2 * 3.14159))) * exp(-pow(i - transit_time_mean, 2) / (2 * pow(sigma, 2)))
+}
+
+# Group-specific delayed concentration
+for (g in 1:3) {
+  for (t in 1:T) {
+    for (i in 1:tmax) {
+      lag_g[i, t, g] <- t - i + 1
+      is_valid_g[i, t, g] <- step(lag_g[i, t, g])
+      safe_index_g[i, t, g] <- max(lag_g[i, t, g], 1)
+      safe_shedding_g[i, t, g] <- is_valid_g[i, t, g] * daily_shedding_g[g, safe_index_g[i, t, g]]
+      contrib_g[i, t, g] <- safe_shedding_g[i, t, g] * g_kernel[i] * exp(-mu * i)
+    }
+    delayed_conc_g[g, t] <- sum(contrib_g[1:tmax, t, g])
+  }
+}
+
+
   ##Case likelihood
 for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
     mu_nb[t] <- total_new_cases[t]+ 1e-6 # Mean for the Negative Binomial to ensure its not neg
@@ -478,6 +508,30 @@ for (w in 1:T_WWobs) {
   ww_pred[w] ~ dnorm(log10_conc[w], tau_ww)
 
 }
+
+# All days (for plotting/PPD over full timeline)
+for (g in 1:3) {
+  for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
+    cp_total_all_g[g, t] <- delayed_conc_g[g, t] * mult
+    cp_per_person_all_g[g, t] <- cp_total_all_g[g, t] / wwtp_population
+    cp_per_person_mL_all_g[g, t] <- cp_per_person_all_g[g, t] * flow_mlalldaily[t - burn_in_timesteps]
+    log10_conc_all_g[g, t] <- log(cp_per_person_mL_all_g[g, t] + 1) / log(10)
+  }
+}
+
+for (g in 1:3) {
+  for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
+    # Posterior predictive draw for full daily series (all timesteps)
+    log10_conc_all_g_pred[g, t] ~ dnorm(log10_conc_all_g[g, t], tau_ww)
+  }
+}
+
+for (g in 1:3) {
+  for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
+    mu_nb_g[g, t] <- new_reported_cases[g, t] + 1e-6
+    p_nb_g[g, t] <- phi / (phi + mu_nb_g[g, t])
+    cases_pred_g[g, t - burn_in_timesteps] ~ dnegbin(p_nb_g[g, t], phi)
+  }}
 }"
 
 
@@ -694,8 +748,11 @@ inits_list <- list(
 
 # #Run the model with different initial values for each chain
 system.time({
-  Combined_finaltestf<- run.jags(textstring, data = dataListcomb,
+  Combined_finaltestfb<- run.jags(textstring, data = dataListcomb,
                      monitor = c("ww_pred","cases_pred","log10_conc_all",
+                                 "cases_pred_g","mu_nb_g",  # group-level predictive + params
+                                 "log10_conc_all_g_pred", # all-days per group
+                                 "log10_conc_all_g",
                                  "E0","P0","A10","I10",
                                  "log10_conc","mu_nb",
                                  "P_total", "A_total", "I_total",
@@ -707,14 +764,13 @@ system.time({
                                  "delta_inv","theta_invall","omega_invall"),
                      method="parallel",
                      #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                     sample = 20000, adapt =4000, burnin = 4000, thin = 2,
+                     sample = 40000, adapt =4000, burnin = 4000, thin = 2,
                      n.chains = 2, inits = inits_list,
                      summarise = FALSE)
 })
 
-
-Comb_finaltestf<- as.mcmc.list( Combined_finaltestf)
-save(Comb_finaltestf,file="U:/mpox25output/Comb_finaltestf.RData")
+Comb_finaltestfb<- as.mcmc.list(  Combined_finaltestfb)
+save(Comb_finaltestfb,file="U:/mpox25output/Comb_finaltestfb.RData")
 
 ############generate output
 load(file="U:/mpox25output/Comb_finaltestc.RData")

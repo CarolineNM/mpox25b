@@ -223,6 +223,7 @@ total_lambda[1] <- sum(lambda_det[1:3, 1])
      active_infected[1] <- 0                  # Initial prevalence
      daily_shedding[1]<-0                     #Initial shed viral load
      
+ 
 
   # Dynamics of the model (deterministic-like)
   for (t in 2:T) {
@@ -447,6 +448,8 @@ for (t in 1:T) {
   }
   delayed_conc[t] <- sum(contrib[1:tmax, t])
 }
+
+
 
   ##Case likelihood
 for (t in (burn_in_timesteps + 1):(T_caseobs + burn_in_timesteps)) {
@@ -725,7 +728,7 @@ inits_list <- list(
 
 # #Run the model with different initial values for each chain
 system.time({
-  Combined_WWtestf<- run.jags(textstring, data = dataListcomb,
+  Combined_WWtestff<- run.jags(textstring, data = dataListcomb,
                           monitor = c("ww_pred","log10_conc_all","cases_pred",
                                       "log10_conc","mu_nb","phi",
                                       "P_total","A_total", "I_total","mult","log_mult",
@@ -737,14 +740,14 @@ system.time({
                                       "delta_inv","theta_invall","omega_invall"),
                           method="parallel",
                           #sample = 2000, adapt =500, burnin = 500, thin = 1,
-                          sample = 20000, adapt =4000, burnin = 4000, thin = 2,
+                          sample = 30000, adapt =4000, burnin = 4000, thin = 2,
                           n.chains = 2, inits = inits_list,
                           summarise = FALSE)
 })
 
 
-Comb_WWtestf<- as.mcmc.list(Combined_WWtestf)
-save(Comb_WWtestf,file="U:/mpox25output/Comb_WWtestf.RData")
+Comb_WWtestff<- as.mcmc.list(Combined_WWtestff)
+save(Comb_WWtestff,file="U:/mpox25output/Comb_WWtestff.RData")
 
 ###load data#############
 load(file="U:/mpox25output/Comb_WWtestc.RData")
