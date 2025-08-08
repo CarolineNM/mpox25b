@@ -244,7 +244,7 @@ plot_casewwfitb <- ggplot(plot_dataww_casesb, aes(x = Date)) +
 # Viral load – WW-only model
 plot_wwfit <- ggplot(plot_dataww, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 9)+
+  ylim(0, 8)+
   labs(
     x = "Date", y = "Fit vs. observed viral load",
     title = "(WW-only model)"
@@ -253,7 +253,7 @@ plot_wwfit <- ggplot(plot_dataww, aes(x = Date)) +
 
 plot_wwfitb <- ggplot(plot_datawwb, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 9)+
+  ylim(0, 8)+
   labs(
     x = "Date", y = "Fit vs. observed viral load",
     title = "(WW-only model)"
@@ -264,7 +264,8 @@ plot_wwfitb <- ggplot(plot_datawwb, aes(x = Date)) +
 # Viral load – Case only model
 plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 9)+
+  #coord_cartesian(ylim = c(NA, 8))+
+  scale_y_continuous(breaks = c(0, 2, 4, 6, 8))+
   labs(
     x = "Date", y = "Fit vs. observed viral load",
     title = "(Case-only model)"
@@ -273,7 +274,7 @@ plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = Date)) +
 
 plot_wwcasefitb <- ggplot(plot_datacas_wwb, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 9)+
+  scale_y_continuous(breaks = c(0, 2, 4, 6, 8))+
   labs(
     x = "Date", y = "Fit vs. observed viral load",
     title = "(Case-only model)"
@@ -284,7 +285,7 @@ plot_wwcasefitb <- ggplot(plot_datacas_wwb, aes(x = Date)) +
 # Viral load – Combined model
 plot_comwwfit <- ggplot(plot_datcomww, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 9)+
+  ylim(0, 8)+
   labs(
     x = "Date", y = "Fit vs. observed viral load",
     title = "(Combined model)"
@@ -293,7 +294,7 @@ plot_comwwfit <- ggplot(plot_datcomww, aes(x = Date)) +
 
 plot_comwwfitb <- ggplot(plot_datcomwwb, aes(x = Date)) +
   plot_geom +
-  #ylim(0, 9)+
+  ylim(0, 8)+
   labs(
     x = "Date", y = "Fit vs. observed viral load",
     title = "(Combined model)"
@@ -322,7 +323,7 @@ plot_comcasefitb <- ggplot(plot_datcomcasb, aes(x = Date)) +
   custom_theme
 
 ZZ=(plot_casefit+plot_comcasefit+plot_casewwfitb)/(plot_casefitb+plot_comcasefitb+plot_casewwfit)
-ZZ+plot_layout(guides = "collect") & theme(legend.position = "bottom")
+mm=ZZ+plot_layout(guides = "collect") & theme(legend.position = "bottom")
 
 
 yy=(plot_wwfit+plot_comwwfit+plot_wwcasefitb)/(plot_wwfitb+plot_comwwfitb+plot_wwcasefit)
@@ -404,7 +405,6 @@ plot_prev_all <- ggplot(plot_allprev, aes(x = Date, y = median_fit, color = mode
     plot.title = element_text(face = "bold", hjust = 0.5))
 
 
-
 plot_prev_all
 
 Cuminc_wwsummary <- as.data.frame(posterior_summaryww[grep("total_Cuminc", rownames(posterior_summaryww)), ])
@@ -468,8 +468,6 @@ plot_Cuminc_all <- ggplot(plot_allCuminc, aes(x = Date, y = median_fit, color = 
     legend.position = "bottom",
     plot.title = element_text(face = "bold", hjust = 0.5))
 
-
-
 y=plot_prev_all+plot_Cuminc_all+plot_layout(guides = "collect") & theme(legend.position = "bottom")
 
 ggsave(
@@ -490,6 +488,7 @@ case_mod  <- Comb_castestf
 ww_mod   <- Comb_WWtestf
 com_mod <- Comb_finaltestf
 
+
 ###Define parameter to model mapping
 param_model_map <- list(
   beta = c("Case-only", "Viral load-only", "Combined"),
@@ -504,6 +503,7 @@ param_model_map <- list(
   m = c("Case-only","Viral load-only","Combined"),
   transit_time_mean = c("Case-only","Viral load-only", "Combined"),
   transit_time_cv = c("Viral load-only", "Combined"),
+  transit_time_cv = c("Case-only","Viral load-only", "Combined"),
   mult = c("Case-only","Viral load-only", "Combined"),
   tau_ww = c("Viral load-only","Case-only", "Combined")
 )
@@ -581,7 +581,7 @@ beta_df_all <- bind_rows(all_param_dfs)
 beta_df_all$source <- factor(beta_df_all$source, levels = c("Combined","Viral load-only","Case-only","Prior"))
 beta_df_all$parameter_label <- param_labels[beta_df_all$parameter]
 
-WW_params <- c("mult", "transit_time_mean","transit_time_cv","tau_ww","beta")
+WW_params <- c("mult", "transit_time_mean","transit_time_cv","tau_ww")
 
 plota=ggplot(beta_df_all %>% filter(parameter %in% WW_params), 
              aes(x = value, y = source, fill = source)) +
@@ -590,7 +590,7 @@ plota=ggplot(beta_df_all %>% filter(parameter %in% WW_params),
                       quantiles = 0.5,
                       scale = 0.9,
                       rel_min_height = 0.0005) +
-  facet_wrap(~ parameter_label, scales = "free_x", ncol = 3) +
+  facet_wrap(~ parameter_label, scales = "free_x", ncol = 2) +
   scale_fill_manual(values = c("gray30", "gray60", "gray70", "gray90")) +
   theme_minimal(base_size = 14) +
   theme(
@@ -601,6 +601,132 @@ plota=ggplot(beta_df_all %>% filter(parameter %in% WW_params),
   )
 plota
 
+ggsave(
+  filename = "U:/Mpox25output/marginalA.tiff",
+  plot = plota,  # use your actual plot variable here
+  width = 12,
+  height = 6,
+  dpi = 300,
+  units = "in",
+  device = "tiff",
+  compression = "lzw"
+)
+
+
+case_params <- c("beta", "kappa","report_frac","m")
+
+plotb=ggplot(beta_df_all %>% filter(parameter %in% case_params), 
+             aes(x = value, y = source, fill = source)) +
+  geom_density_ridges(alpha = 0.7, 
+                      quantile_lines = TRUE, 
+                      quantiles = 0.5,
+                      scale = 0.9,
+                      rel_min_height = 0.0005) +
+  facet_wrap(~ parameter_label, scales = "free_x", ncol = 2) +
+  scale_fill_manual(values = c("gray30", "gray60", "gray70", "gray90")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12)
+  )
+plotb
+
+ggsave(
+  filename = "U:/Mpox25output/marginalB.tiff",
+  plot = plotb,  # use your actual plot variable here
+  width = 12,
+  height = 6,
+  dpi = 300,
+  units = "in",
+  device = "tiff",
+  compression = "lzw"
+)
+
+################Trace plots##################
+case_mod  <- Combined_castestc
+ww_mod   <- Comb_WWtestd
+com_mod <- Comb_finaltestd
+
+#WW_params <- c("mult", "transit_time_mean","transit_time_cv","tau_ww")
+params_to_plot <- c("mult", "transit_time_mean","transit_time_cv","tau_ww")
+
+# Convert mcmc.list to long dataframe
+mcmc_df <- as.data.frame(do.call(rbind, lapply(1:length(com_mod), function(i) {
+  df <- as.data.frame(com_mod[[i]][, params_to_plot])
+  df$Chain <- paste0("Chain_", i)
+  df$Iteration <- 1:nrow(df)
+  df
+})))
+
+# Reshape to long format
+mcmc_long <- mcmc_df %>%
+  pivot_longer(cols = all_of(params_to_plot), names_to = "Parameter", values_to = "Value")
+
+
+param_labels <- c(
+  transit_time_mean = "Mean transit time (days)",
+  transit_time_cv = "Sd of transit time",
+  mult = "Scaling factor for viral load",
+  tau_ww = "Precision of WW likelihood (τ)"
+)
+
+
+mcmc_long$ParameterLabel <- param_labels[mcmc_long$Parameter]
+
+# Plot
+ww_traceplot<-ggplot(mcmc_long, aes(x = Iteration, y = Value, color = Chain)) +
+  geom_line(alpha = 0.6) +
+  #facet_wrap(~ Parameter, scales = "free_y", ncol = 2) +
+  facet_wrap(~ ParameterLabel, scales = "free_y", ncol = 2) +
+  theme_minimal(base_size = 11) +
+  labs(title = "Posterior Distributions (Combined)")
+
+
+case_densplot<-ggplot(mcmc_long, aes(x = Value, fill = Chain)) +
+  geom_density(alpha = 0.6) +
+  facet_wrap(~ ParameterLabel, scales = "free", ncol = 2) +
+  theme_minimal(base_size = 11) +
+  labs(title = "Posterior Distributions (Combined)", x = "Value", y = "Density") +
+  theme(legend.position = "right")
+
+case_densplot
+
+mm=ww_traceplot+case_densplot
+comb=mm+plot_layout(guides = "collect") & theme(legend.position = "bottom")
+
+ggsave(
+  filename = "U:/Mpox25output/traceplotsB.tiff",
+  plot = comb,  # use your actual plot variable here
+  width = 14,
+  height = 6,
+  dpi = 300,
+  units = "in",
+  device = "tiff",
+  compression = "lzw"
+)
+
+###############The Gelman rubins diagnostics and ESS###############
+params_of_interest <- c("transit_time_cv","transit_time_mean", "log_mult", "tau_ww")
+
+ww_subset <- com_mod[, params_of_interest]
+
+gelman <- gelman.diag(ww_subset, multivariate = FALSE)
+ess <- effectiveSize(ww_subset)
+
+
+# Create summary table
+WW_summary_table <- data.frame(
+  Parameter = rownames(gelman$psrf),
+  Rhat = round(gelman$psrf[, 1], 3),
+  ESS = round(ess[rownames(gelman$psrf)], 0)
+)
+
+print(WW_summary_table)
+
+
+>>>>>>> e42687c2552bdaa868433054e0b73647b88823a3
 
 
 
