@@ -34,7 +34,7 @@ mcmc_matrixallWW<-as.matrix(Comb_WWtestf)
 mcmc_matrixallcas<-as.matrix(Comb_castestf) ###most recent version
 mcmc_matrixallcom<-as.matrix(Comb_finaltestf)
 
-
+#E0=8(3-14);P0<-2(0-5);A10<-1(0-3);I10<-2(0-6)
 # Function to compute the median and 95% credible interval
 summary_median_CI <- function(samples) {
   med <- apply(samples, 2, median)
@@ -186,16 +186,16 @@ plot_datcomwwb <- data.frame(
 custom_theme <- theme_minimal(base_size = 14) +
   theme(
     legend.position = "none",
-    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-    axis.title = element_text(size = 13),
-    axis.text = element_text(size = 11)
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5, colour = "black"),
+    axis.title = element_text(size = 14, face = "bold", colour = "black"),
+    axis.text = element_text(size = 11, colour = "black")
   )
 
-# Shared plot elements
+# Updated shared plot elements for better visibility
 plot_geom <- list(
-  geom_point(aes(y = observed), color = "black", size = 1.2, alpha = 0.7),
-  geom_line(aes(y = median_fit), color = "blue4", size = 1),
-  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "skyblue", alpha = 0.3)
+  geom_point(aes(y = observed), color = "black", size = 1.5, alpha = 0.8),
+  geom_line(aes(y = median_fit), color = "blue4", size = 1.2), # thicker line
+  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), fill = "skyblue", alpha = 0.4) # slightly darker ribbon
 )
 
 # Cases – Case-only model
@@ -216,7 +216,7 @@ plot_casefitb <- ggplot(plot_datcasb, aes(x = Date)) +
   #ylim(0, 9)+
   labs(
     x = "Date", y = "Fit vs. observed cases",
-    #title = "(Case-only model)"
+    title = "(Case-only model)"
   ) +
   custom_theme
 
@@ -226,7 +226,7 @@ plot_casewwfit <- ggplot(plot_dataww_cases, aes(x = Date)) +
   ylim(0, 11)+
   labs(
     x = "Date", y = "Fit vs. observed cases",
-    #title = "(WW-only model)"
+    title = "(WW-only model)"
   ) +
   custom_theme
 
@@ -264,7 +264,7 @@ plot_wwfitb <- ggplot(plot_datawwb, aes(x = Date)) +
 # Viral load – Case only model
 plot_wwcasefit <- ggplot(plot_datacas_ww, aes(x = Date)) +
   plot_geom +
-  #coord_cartesian(ylim = c(NA, 8))+
+  coord_cartesian(ylim = c(NA, 8))+
   scale_y_continuous(breaks = c(0, 2, 4, 6, 8))+
   labs(
     x = "Date", y = "Fit vs. observed viral load",
@@ -318,7 +318,7 @@ plot_comcasefitb <- ggplot(plot_datcomcasb, aes(x = Date)) +
   ylim(0, 11)+
   labs(
     x = "Date", y = "Fit vs. observed cases",
-    #title = "(Combined model)"
+    title = "(Combined model)"
   ) +
   custom_theme
 
@@ -329,16 +329,38 @@ mm=ZZ+plot_layout(guides = "collect") & theme(legend.position = "bottom")
 yy=(plot_wwfit+plot_comwwfit+plot_wwcasefitb)/(plot_wwfitb+plot_comwwfitb+plot_wwcasefit)
 yy
 
+
+# Make top row: Case-only, Combined, WW-only
+top_row <- plot_casefitb + plot_comcasefitb + plot_casewwfit
+
+# Make bottom row: Case-only, Combined, WW-only (matching order)
+bottom_row <- plot_wwcasefit + plot_comwwfitb + plot_wwfitb
+
+# Combine with patchwork, keeping consistent layout
+mainfigure1 <- (top_row / bottom_row) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
 ggsave(
-  filename = "D:/Mpox25output/Figures/predfit2.tiff",
-  plot = yy,  # use your actual plot variable here
-  width = 13,
-  height = 6,
-  dpi = 300,
+  filename = "D:/Mpox25output/Figures/mainfigure1.pdf",
+  plot = mainfigure1,
+  width = 12,       # adjust width for your manuscript column/page size
+  height = 7,      # adjust height accordingly
   units = "in",
-  device = "tiff",
-  compression = "lzw"
+  device = cairo_pdf # ensures high-quality text rendering
 )
+
+# ggsave(
+#   filename = "D:/Mpox25output/Figures/predfit2.tiff",
+#   plot = yy,  # use your actual plot variable here
+#   width = 13,
+#   height = 6,
+#   dpi = 300,
+#   units = "in",
+#   device = "tiff",
+#   compression = "lzw"
+# )
 
 ########generate prevalence and cumulative incidence
 ##########generate data for model predicted prevalence
@@ -487,7 +509,6 @@ ggsave(
 case_mod  <- Comb_castestf
 ww_mod   <- Comb_WWtestf
 com_mod <- Comb_finaltestf
-
 
 ###Define parameter to model mapping
 param_model_map <- list(

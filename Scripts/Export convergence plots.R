@@ -408,6 +408,14 @@ plot_comprev$model <- "Combined"
 # Combine into one dataframe
 plot_allprev <- bind_rows(plot_wwprev, plot_casprev, plot_comprev)
 
+custom_theme <- theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5, colour = "black"),
+    axis.title = element_text(size = 14, face = "bold", colour = "black"),
+    axis.text = element_text(size = 11, colour = "black")
+  )
+
 plot_prev_all <- ggplot(plot_allprev, aes(x = Date, y = median_fit, color = model, fill = model)) +
   geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, color = NA) +
   geom_line(size = 1.1) +
@@ -419,14 +427,7 @@ plot_prev_all <- ggplot(plot_allprev, aes(x = Date, y = median_fit, color = mode
   theme_minimal(base_size = 14) +
   scale_color_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
   scale_fill_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
-  theme(
-    legend.title = element_blank(),
-    legend.position = "bottom",
-    plot.title = element_text(face = "bold", hjust = 0.5))
-
-
-
-plot_prev_all
+  custom_theme
 
 
 ##########Generate incidence plots##########
@@ -474,7 +475,6 @@ plot_comCuminc$model <- "Combined"
 # Combine into one dataframe
 plot_allCuminc <- bind_rows(plot_wwCuminc, plot_casCuminc,plot_comCuminc)
 
-
 plot_Cuminc_all <- ggplot(plot_allCuminc, aes(x = Date, y = median_fit, color = model, fill = model)) +
   geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, color = NA) +
   geom_line(size = 1.1) +
@@ -486,14 +486,31 @@ plot_Cuminc_all <- ggplot(plot_allCuminc, aes(x = Date, y = median_fit, color = 
   theme_minimal(base_size = 14) +
   scale_color_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
   scale_fill_manual(values = c("WW-only" = "blue", "Case-only" = "darkgreen", "Combined" = "Orange")) +
-  theme(
-    legend.title = element_blank(),
-    legend.position = "bottom",
-    plot.title = element_text(face = "bold", hjust = 0.5))
-
+  custom_theme
 
 
 y=plot_prev_all+plot_Cuminc_all+plot_layout(guides = "collect") & theme(legend.position = "bottom")
+
+mainfigure2 <- plot_prev_all+plot_Cuminc_all +
+  #plot_annotation(tag_levels = "A") +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+ggsave(
+  filename = "D:/Mpox25output/Figures/mainfigure2.pdf",
+  plot = mainfigure2,
+  width = 12,       # adjust width for your manuscript column/page size
+  height = 7,      # adjust height accordingly
+  units = "in",
+  device = cairo_pdf # ensures high-quality text rendering
+)
+
+
+
+
+
+
+
 
 
 ggsave(
@@ -999,8 +1016,6 @@ cases_obsb = case_dat %>% select(Date,total_cases)
 ##2. WW data #########################
 ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
 ww_std = ww_dat %>% select(date,log10_cp_per_person_per_day) %>% rename(Date=date)
-
-
 
 
 # Merge the two with full_join

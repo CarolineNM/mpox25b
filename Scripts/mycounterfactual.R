@@ -34,6 +34,7 @@ Cumulat_inc=case_dat$Cumulat_Inc
 ww_dat=read_excel("Data/case_data_V2.xlsx",sheet="dailyWW")
 ww_std = ww_dat %>% select(log10_cp_per_person_per_day) #####standardised WW data
 ww_obs = as.numeric(unlist(ww_std$log10_cp_per_person_per_day))
+obs_days <- ww_dat$Day
 
 ###########Test the code###############
 # Example: draw one row
@@ -98,74 +99,74 @@ extract_params <- function(draw_row) {
 }
 
 set.seed(123)
-load("D:/mpox25output/Comblist_finalg.RData")
-mcmc_matrixallcom <- as.matrix(do.call(rbind, Comblist_finalg))
+load("D:/mpox25output/Comb_finaltestf.RData")
+mcmc_matrixallcom <- as.matrix(do.call(rbind, Comb_finaltestf))
 one_draw <- mcmc_matrixallcom[1000, ]
 params <- extract_params(one_draw)
 
 # Simulation function with vaccination scenario flexibility
-mysimulate_model <- function(params, init, contact, N, T, vax_scenario = "baseline") {
+mysimulate_model <- function(params, init, contact, N, T, 
+                             vax_scenario = "baseline", 
+                             v1_frac = 1, 
+                             v2_frac = 1) {
   G <- length(N)
   
   alpha_v <- rep(0, T)
   mu_v <- rep(0, T)
   
   if (vax_scenario == "baseline") {
-         alpha_v <- init$alpha_v
-         mu_v <- init$mu_v
-    
-      # Force vaccinated compartments to shed like unvaccinated
-      params$shed_P1a <- params$shed_alpha
-      params$shed_P1b <- params$shed_alpha
-      
-      params$shed_I1a <- params$shed_I1
-      params$shed_I2a <- params$shed_I2
-      params$shed_I3a <- params$shed_I3
-      params$shed_I1b <- params$shed_I1
-      params$shed_I2b <- params$shed_I2
-      params$shed_I3b <- params$shed_I3
-      
-      params$shed_A1a <- params$shed_A1
-      params$shed_A2a <- params$shed_A2
-      params$shed_A3a <- params$shed_A3
-      params$shed_A1b <- params$shed_A1
-      params$shed_A2b <- params$shed_A2
-      params$shed_A3b <- params$shed_A3
-      } 
-  else if (vax_scenario == "no_vax") {
-    alpha_v <- rep(0, T)
-    mu_v <- rep(0, T)
-    params$rsa <- 1
-    params$rsb <- 1
-    message("[Scenario: no vaccination] Vaccination transitions are disabled.")
-  }
-  else if (vax_scenario == "reduced_shedding") {
     alpha_v <- init$alpha_v
     mu_v <- init$mu_v
     
-    # Apply reduced shedding for vaccinated individuals(less shedding by 40% for v1)
-    params$shed_P1a <- params$shed_alpha * 0.6
-    params$shed_I1a <- params$shed_I1 * 0.6
-    params$shed_I2a <- params$shed_I2 * 0.6
-    params$shed_I3a <- params$shed_I3 * 0.6
-    params$shed_A1a <- params$shed_A1 * 0.6
-    params$shed_A2a <- params$shed_A2 * 0.6
-    params$shed_A3a <- params$shed_A3 * 0.6
+    # Force vaccinated compartments to shed like unvaccinated
+    params$shed_P1a <- params$shed_alpha
+    params$shed_P1b <- params$shed_alpha
     
+    params$shed_I1a <- params$shed_I1
+    params$shed_I2a <- params$shed_I2
+    params$shed_I3a <- params$shed_I3
+    params$shed_I1b <- params$shed_I1
+    params$shed_I2b <- params$shed_I2
+    params$shed_I3b <- params$shed_I3
     
-    # Apply reduced shedding for vaccinated individuals(less shedding by 70% for v2)
-    params$shed_P1b <- params$shed_alpha * 0.3
-    params$shed_I1b <- params$shed_I1 * 0.3
-    params$shed_I2b <- params$shed_I2 * 0.3
-    params$shed_I3b <- params$shed_I3 * 0.3
-    params$shed_A1b <- params$shed_A1 * 0.3
-    params$shed_A2b <- params$shed_A2 * 0.3
-    params$shed_A3b <- params$shed_A3 * 0.3
+    params$shed_A1a <- params$shed_A1
+    params$shed_A2a <- params$shed_A2
+    params$shed_A3a <- params$shed_A3
+    params$shed_A1b <- params$shed_A1
+    params$shed_A2b <- params$shed_A2
+    params$shed_A3b <- params$shed_A3
     
-    message("[Scenario: reduced shedding] Lower shedding applied to vaccinated compartments.")
+  } else if (vax_scenario == "reduced_shedding") {
+    alpha_v <- init$alpha_v
+    mu_v    <- init$mu_v
+    
+    # Apply dose-specific shedding multipliers (remaining fraction)
+    # Dose 1
+    params$shed_P1a <- params$shed_alpha * v1_frac
+    params$shed_I1a <- params$shed_I1    * v1_frac
+    params$shed_I2a <- params$shed_I2    * v1_frac
+    params$shed_I3a <- params$shed_I3    * v1_frac
+    params$shed_A1a <- params$shed_A1    * v1_frac
+    params$shed_A2a <- params$shed_A2    * v1_frac
+    params$shed_A3a <- params$shed_A3    * v1_frac
+    
+    # Dose 2
+    params$shed_P1b <- params$shed_alpha * v2_frac
+    params$shed_I1b <- params$shed_I1    * v2_frac
+    params$shed_I2b <- params$shed_I2    * v2_frac
+    params$shed_I3b <- params$shed_I3    * v2_frac
+    params$shed_A1b <- params$shed_A1    * v2_frac
+    params$shed_A2b <- params$shed_A2    * v2_frac
+    params$shed_A3b <- params$shed_A3    * v2_frac
+    
+    message(sprintf("[Scenario: reduced shedding] v1_frac=%.2f, v2_frac=%.2f", 
+                    v1_frac, v2_frac))
+    
+  } else {
+    stop("vax_scenario must be 'baseline' or 'reduced_shedding'")
   }
   
-  
+
   # Extract parameters
   va_delay <- params$va_delay
   vb_delay <- params$vb_delay
@@ -607,10 +608,6 @@ mysimulate_model <- function(params, init, contact, N, T, vax_scenario = "baseli
     shed_I=shed_I
   ))
 }
-
-#E0;9[4-14]#P0;2[0-5]#A10;2[0-5]#I10;2[0-5]   
-###Estimated initials from Negb25estimates_inits######
-#E0=8(3-14);P0<-2(0-5);A10<-1(0-3);I10<-2(0-6)
 ###We used the median estimates from the above values to generate new initial conditions
 E_start <- 14 * Norm_contact_dy;P_start <- 5* Norm_contact_dy;A1_start <- 5* Norm_contact_dy;I1_start <- 5* Norm_contact_dy
 A2_start=c(0,0,0);A3_start=c(0,0,0);I2_start=c(0,0,0);I3_start=c(0,0,0);R_start=c(0,0,0);Cuminc_start=c(0,0,0)
@@ -696,28 +693,18 @@ init_vals <- list(
   alpha_v=alpha_v
 )
 
+remaining_fracs <- c(0.8, 0.6, 0.4, 0.2)
 
-sim_result_novax <- mysimulate_model(
-  params = params,
-  init = init_vals,     # your list of initial conditions
-  contact = contact,    # contact rates from your `dat`
-  N = N,                # population sizes
-  T = 169 + burn_in_timesteps,  # full time horizon
-  vax_scenario = "no_vax"
-)
+runs <- map(remaining_fracs, function(f) {
+  out <- mysimulate_model(params, init_vals, contact, N, T,
+                          vax_scenario = "reduced_shedding",
+                          v1_frac = f, v2_frac = f)
+  out$label <- paste0("Reduced shedding: ", round((1 - f) * 100), "%")
+  out
+})
 
-sim_result_novax
 
-sim_reducedshed <- mysimulate_model(
-  params = params,
-  init = init_vals,     # your list of initial conditions
-  contact = contact,    # contact rates from your `dat`
-  N = N,                # population sizes
-  T = 169 + burn_in_timesteps,  # full time horizon
-  vax_scenario = "reduced_shedding"
-)
 
-sim_reducedshed
 
 sim_baseline <- mysimulate_model(
   params = params,
@@ -731,145 +718,254 @@ sim_baseline <- mysimulate_model(
 sim_baseline
 
 ##############Now we sample multiple posterior draws
-set.seed(123)  # for reproducibility
-n_draws <-200     ##5000
-G <- 3   #number of groups
-T <- 199  #timepoints
+set.seed(123)
+n_draws <- 200    # e.g., 5000 for full run
+G <- 3            # number of groups
+T <- 199          # timepoints
 draw_indices <- sample(1:nrow(mcmc_matrixallcom), size = n_draws, replace = FALSE)
 
-############Initialize lists to hold draws for no vax########
-cases_novax <- matrix(NA, nrow = n_draws, ncol = T)
-vload_novax <- matrix(NA, nrow = n_draws, ncol = T)
-cuminc_novax <- matrix(NA, nrow = n_draws, ncol = T)
-prev_novax <- matrix(NA, nrow = n_draws, ncol = T)
-FOI_novax <- matrix(NA, nrow = n_draws, ncol = T)
+# Fractions for reduced shedding scenarios
+fractions <- c(0.8, 0.6, 0.4, 0.2)
 
-shed_P_novax <- array(NA, dim = c(n_draws, G, T))
-shed_A_novax <- array(NA, dim = c(n_draws, G, T))
-shed_I_novax <- array(NA, dim = c(n_draws, G, T))
-P_total_novax <- array(NA, dim = c(n_draws, G, T))
-A_total_novax <- array(NA, dim = c(n_draws, G, T))
-I_total_novax <- array(NA, dim = c(n_draws, G, T))
+# Storage: baseline + one list per fraction
+results <- list(
+  baseline = list(
+    cases = matrix(NA, n_draws, T),
+    vload = matrix(NA, n_draws, T),
+    cuminc = matrix(NA, n_draws, T),
+    prev = matrix(NA, n_draws, T),
+    FOI = matrix(NA, n_draws, T),
+    shed_P = array(NA, dim = c(n_draws, G, T)),
+    shed_A = array(NA, dim = c(n_draws, G, T)),
+    shed_I = array(NA, dim = c(n_draws, G, T)),
+    P_total = array(NA, dim = c(n_draws, G, T)),
+    A_total = array(NA, dim = c(n_draws, G, T)),
+    I_total = array(NA, dim = c(n_draws, G, T))
+  ),
+  reduced_shedding = vector("list", length(fractions))
+)
 
-############Initialize lists to hold draws for reduced shed########
+# Pre-allocate each reduced_shedding fraction slot
+for (f_idx in seq_along(fractions)) {
+  results$reduced_shedding[[f_idx]] <- list(
+    frac = fractions[f_idx],
+    cases = matrix(NA, n_draws, T),
+    vload = matrix(NA, n_draws, T),
+    cuminc = matrix(NA, n_draws, T),
+    prev = matrix(NA, n_draws, T),
+    FOI = matrix(NA, n_draws, T),
+    shed_P = array(NA, dim = c(n_draws, G, T)),
+    shed_A = array(NA, dim = c(n_draws, G, T)),
+    shed_I = array(NA, dim = c(n_draws, G, T)),
+    P_total = array(NA, dim = c(n_draws, G, T)),
+    A_total = array(NA, dim = c(n_draws, G, T)),
+    I_total = array(NA, dim = c(n_draws, G, T))
+  )
+}
 
-cases_reducedshed <- matrix(NA, nrow = n_draws, ncol = T)
-vload_reducedshed <- matrix(NA, nrow = n_draws, ncol = T)
-cuminc_reducedshed <- matrix(NA, nrow = n_draws, ncol = T)
-prev_reducedshed <- matrix(NA, nrow = n_draws, ncol = T)
-FOI_reducedshed <- matrix(NA, nrow = n_draws, ncol = T)
-
-shed_P_reducedshed <- array(NA, dim = c(n_draws, G, T))
-shed_A_reducedshed <- array(NA, dim = c(n_draws, G, T))
-shed_I_reducedshed <- array(NA, dim = c(n_draws, G, T))
-P_total_reducedshed <- array(NA, dim = c(n_draws, G, T))
-A_total_reducedshed <- array(NA, dim = c(n_draws, G, T))
-I_total_reducedshed <- array(NA, dim = c(n_draws, G, T))
-
-
-############Initialize lists to hold draws for baseline########
-cases_baseline <- matrix(NA, nrow = n_draws, ncol = T)
-vload_baseline <- matrix(NA, nrow = n_draws, ncol = T)
-cuminc_baseline <- matrix(NA, nrow = n_draws, ncol = T)
-prev_baseline <- matrix(NA, nrow = n_draws, ncol = T)
-FOI_baseline <- matrix(NA, nrow = n_draws, ncol = T)
-
-shed_P_baseline <- array(NA, dim = c(n_draws, G, T))
-shed_A_baseline <- array(NA, dim = c(n_draws, G, T))
-shed_I_baseline <- array(NA, dim = c(n_draws, G, T))
-P_total_baseline <- array(NA, dim = c(n_draws, G, T))
-A_total_baseline <- array(NA, dim = c(n_draws, G, T))
-I_total_baseline <- array(NA, dim = c(n_draws, G, T))
-
-
+# Loop over posterior draws
 for (i in seq_along(draw_indices)) {
   draw <- draw_indices[i]
   params <- extract_params(mcmc_matrixallcom[draw, ])
   
-  # No vaccination
-  sim_novax <- mysimulate_model(params, init_vals, contact, N, T, vax_scenario = "no_vax")
-  cases_novax[i, ] <- sim_novax$cases
-  vload_novax[i, ] <- sim_novax$viral_load
-  cuminc_novax[i, ] <- sim_novax$cumulative_incidence
-  prev_novax[i, ] <- sim_novax$prevalence
-  FOI_novax[i, ] <- sim_novax$FOI
-  shed_P_novax[i, , ] <- sim_novax$shed_P
-  shed_A_novax[i, , ] <- sim_novax$shed_A
-  shed_I_novax[i, , ] <- sim_novax$shed_I
-  P_total_novax[i, , ] <- sim_novax$P_total
-  A_total_novax[i, , ] <- sim_novax$A_total
-  I_total_novax[i, , ] <- sim_novax$I_total
+  # ---- Baseline ----
+  sim_base <- mysimulate_model(params, init_vals, contact, N, T,
+                               vax_scenario = "baseline")
   
-  # Reduced shedding
-  sim_rshed <- mysimulate_model(params, init_vals, contact, N, T, vax_scenario = "reduced_shedding")
-  cases_reducedshed[i, ] <- sim_rshed$cases
-  vload_reducedshed[i, ] <- sim_rshed$viral_load
-  cuminc_reducedshed[i, ] <- sim_rshed$cumulative_incidence
-  prev_reducedshed[i, ] <- sim_rshed$prevalence
-  FOI_reducedshed[i, ] <- sim_rshed$FOI
-  shed_P_reducedshed[i, , ] <- sim_rshed$shed_P
-  shed_A_reducedshed[i, , ] <- sim_rshed$shed_A
-  shed_I_reducedshed[i, , ] <- sim_rshed$shed_I
-  P_total_reducedshed[i, , ] <- sim_rshed$P_total
-  A_total_reducedshed[i, , ] <- sim_rshed$A_total
-  I_total_reducedshed[i, , ] <- sim_rshed$I_total
+  results$baseline$cases[i, ]    <- sim_base$cases
+  results$baseline$vload[i, ]    <- sim_base$viral_load
+  results$baseline$cuminc[i, ]   <- sim_base$cumulative_incidence
+  results$baseline$prev[i, ]     <- sim_base$prevalence
+  results$baseline$FOI[i, ]      <- sim_base$FOI
+  results$baseline$shed_P[i, , ] <- sim_base$shed_P
+  results$baseline$shed_A[i, , ] <- sim_base$shed_A
+  results$baseline$shed_I[i, , ] <- sim_base$shed_I
+  results$baseline$P_total[i, , ] <- sim_base$P_total
+  results$baseline$A_total[i, , ] <- sim_base$A_total
+  results$baseline$I_total[i, , ] <- sim_base$I_total
   
-  # Reduced shedding
-  sim_rbaseline <- mysimulate_model(params, init_vals, contact, N, T, vax_scenario = "baseline")
-  cases_baseline[i, ] <- sim_rbaseline$cases
-  vload_baseline[i, ] <- sim_rbaseline$viral_load
-  cuminc_baseline[i, ] <- sim_rbaseline$cumulative_incidence
-  prev_baseline[i, ] <- sim_rbaseline$prevalence
-  FOI_baseline[i, ] <- sim_rbaseline$FOI
-  shed_P_baseline[i, , ] <- sim_rbaseline$shed_P
-  shed_A_baseline[i, , ] <- sim_rbaseline$shed_A
-  shed_I_baseline[i, , ] <- sim_rbaseline$shed_I
-  P_total_baseline[i, , ] <- sim_rbaseline$P_total
-  A_total_baseline[i, , ] <- sim_rbaseline$A_total
-  I_total_baseline[i, , ] <- sim_rbaseline$I_total
+  # ---- Reduced shedding scenarios ----
+  for (f_idx in seq_along(fractions)) {
+    f <- fractions[f_idx]
+    sim_rs <- mysimulate_model(params, init_vals, contact, N, T,
+                               vax_scenario = "reduced_shedding",
+                               v1_frac = f, v2_frac = f)
+    
+    rs <- results$reduced_shedding[[f_idx]]
+    rs$cases[i, ]     <- sim_rs$cases
+    rs$vload[i, ]     <- sim_rs$viral_load
+    rs$cuminc[i, ]    <- sim_rs$cumulative_incidence
+    rs$prev[i, ]      <- sim_rs$prevalence
+    rs$FOI[i, ]       <- sim_rs$FOI
+    rs$shed_P[i, , ]  <- sim_rs$shed_P
+    rs$shed_A[i, , ]  <- sim_rs$shed_A
+    rs$shed_I[i, , ]  <- sim_rs$shed_I
+    rs$P_total[i, , ] <- sim_rs$P_total
+    rs$A_total[i, , ] <- sim_rs$A_total
+    rs$I_total[i, , ] <- sim_rs$I_total
+    
+    # Save back into results list
+    results$reduced_shedding[[f_idx]] <- rs
+  }
 }
 
-all_sim_resultse <- list(
-  baseline = list(
-    cases = cases_baseline,
-    vload = vload_baseline,
-    cuminc = cuminc_baseline,
-    prev = prev_baseline,
-    FOI = FOI_baseline,
-    shed_P = shed_P_baseline,
-    shed_A = shed_A_baseline,
-    shed_I = shed_I_baseline,
-    P_total = P_total_baseline,
-    A_total = A_total_baseline,
-    I_total = I_total_baseline
-  ),
-  no_vax = list(
-    cases = cases_novax,
-    vload = vload_novax,
-    cuminc = cuminc_novax,
-    prev = prev_novax,
-    FOI = FOI_novax,
-    shed_P = shed_P_novax,
-    shed_A = shed_A_novax,
-    shed_I = shed_I_novax,
-    P_total = P_total_novax,
-    A_total = A_total_novax,
-    I_total = I_total_novax
-  ),
-  reduced_shedding = list(
-    cases = cases_reducedshed,
-    vload = vload_reducedshed,
-    cuminc = cuminc_reducedshed,
-    prev = prev_reducedshed,
-    FOI = FOI_reducedshed,
-    shed_P = shed_P_reducedshed,
-    shed_A = shed_A_reducedshed,
-    shed_I = shed_I_reducedshed,
-    P_total = P_total_reducedshed,
-    A_total = A_total_reducedshed,
-    I_total = I_total_reducedshed
+# Compute median and CrI
+summary_quantiles <- function(mat) {
+  apply(mat, 2, function(x) quantile(x, probs = c(0.025, 0.5, 0.975), na.rm = TRUE))
+}
+
+# Make tidy df for plotting
+make_plot_df <- function(summary_matrix, burn_in_timesteps, T, scenario_label, date_vec) {
+  tibble(
+    time = seq_len(T - burn_in_timesteps),
+    median = summary_matrix[2, -(1:burn_in_timesteps)],
+    lower  = summary_matrix[1, -(1:burn_in_timesteps)],
+    upper  = summary_matrix[3, -(1:burn_in_timesteps)],
+    #Date   = date_vec[-(1:burn_in_timesteps)],
+    Date   = date_vec,
+    scenario = scenario_label
   )
-)
+}
+
+# Match predicted values to observed sampling days
+match_to_observed_days <- function(pred_matrix, sample_days) {
+  pred_matrix[, sample_days, drop = FALSE]
+}
+
+make_sampled_vload_df <- function(summary_matrix, obs_days, scenario_label, date_vec) {
+  sampled_matrix <- summary_matrix[, obs_days, drop = FALSE]
+  tibble(
+    time = seq_along(obs_days),
+    Date = date_vec[obs_days],
+    median = sampled_matrix[2, ],
+    lower  = sampled_matrix[1, ],
+    upper  = sampled_matrix[3, ],
+    scenario = scenario_label
+  )
+}
+
+# Plotting helper
+plot_sim_output <- function(data, ylab, title, log_y = FALSE) {
+  ggplot(data, aes(x = Date, y = median, color = scenario, fill = scenario)) +
+    geom_line(size = 1) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, color = NA) +
+    labs(x = "Date", y = ylab, title = title, color = "Scenario", fill = "Scenario") +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "bottom", plot.title = element_text(face = "bold", hjust = 0.5)) +
+    scale_y_continuous(trans = if (log_y) "log10" else "identity")
+}
+
+cases_summary_baseline  <- summary_quantiles(results$baseline$cases)
+vload_summary_baseline  <- summary_quantiles(results$baseline$vload)
+prev_summary_baseline   <- summary_quantiles(results$baseline$prev)
+cuminc_summary_baseline <- summary_quantiles(results$baseline$cuminc)
+
+cases_df <- make_plot_df(cases_summary_baseline, burn_in_timesteps, T, "Baseline", case_dat$Date)
+vload_df <- make_plot_df(vload_summary_baseline, burn_in_timesteps, T, "Baseline", case_dat$Date)
+prev_df  <- make_plot_df(prev_summary_baseline, burn_in_timesteps, T, "Baseline", case_dat$Date)
+cuminc_df <- make_plot_df(cuminc_summary_baseline, burn_in_timesteps, T, "Baseline", case_dat$Date)
+
+vload_sampled_df <- make_sampled_vload_df(vload_summary_baseline, obs_days, "Baseline", case_dat$Date)
+
+# --- Reduced shedding fractions ---
+for (rs in results$reduced_shedding) {
+  frac_label <- paste0("Reduced shedding: ", round((1 - rs$frac) * 100), "%")
+  
+  cases_summary  <- summary_quantiles(rs$cases)
+  vload_summary  <- summary_quantiles(rs$vload)
+  prev_summary   <- summary_quantiles(rs$prev)
+  cuminc_summary <- summary_quantiles(rs$cuminc)
+  
+  cases_df  <- bind_rows(cases_df,  make_plot_df(cases_summary, burn_in_timesteps, T, frac_label, case_dat$Date))
+  vload_df  <- bind_rows(vload_df,  make_plot_df(vload_summary, burn_in_timesteps, T, frac_label, case_dat$Date))
+  prev_df   <- bind_rows(prev_df,   make_plot_df(prev_summary, burn_in_timesteps, T, frac_label, case_dat$Date))
+  cuminc_df <- bind_rows(cuminc_df, make_plot_df(cuminc_summary, burn_in_timesteps, T, frac_label, case_dat$Date))
+  
+  vload_sampled_df <- bind_rows(vload_sampled_df, make_sampled_vload_df(vload_summary, obs_days, frac_label, case_dat$Date))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 saveRDS(all_sim_resultse$baseline, "D:/Mpoxoutputb/baseline_resultse.rds")
 saveRDS(all_sim_resultse$no_vax, "D:/Mpoxoutputb/novax_resultse.rds")
